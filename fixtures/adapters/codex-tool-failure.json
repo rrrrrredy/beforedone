@@ -1,0 +1,17 @@
+{
+  "input": {
+    "session_id": "fixture-session",
+    "turn_id": "fixture-turn",
+    "cwd": "/repo",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Bash",
+    "tool_response": {
+      "exit_code": 1,
+      "output": "unit test failed"
+    }
+  },
+  "expected": {
+    "type": "ToolFinished",
+    "exit_code": 1
+  }
+}

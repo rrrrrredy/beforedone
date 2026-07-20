@@ -1,0 +1,3 @@
+{"schema_version":1,"id":"event-session","occurred_at":"2026-07-17T00:00:00Z","type":"SessionStarted","source":"codex","session_id":"fixture"}
+{"schema_version":1,"id":"event-failed-test","occurred_at":"2026-07-17T00:01:00Z","type":"ToolFinished","source":"codex","session_id":"fixture","tool_name":"Bash","exit_code":1,"summary":"unit test failed"}
+{"schema_version":1,"id":"event-stop","occurred_at":"2026-07-17T00:02:00Z","type":"AgentStopping","source":"codex","session_id":"fixture"}

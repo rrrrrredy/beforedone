@@ -1,0 +1,4 @@
+interface:
+  display_name: "Investigate Agent Incident"
+  short_description: "Reconstruct failures from local observable evidence"
+  default_prompt: "Use $investigate-agent-incident to reconstruct why this agent run failed."

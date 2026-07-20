@@ -1,0 +1,39 @@
+{
+  "name": "beforedone",
+  "version": "1.0.0",
+  "description": "Require fresh evidence before a coding agent claims completion, then reconstruct failed runs from observable events.",
+  "author": {
+    "name": "Song Luo",
+    "url": "https://github.com/rrrrrredy"
+  },
+  "homepage": "https://rrrrrredy.github.io/beforedone/",
+  "repository": "https://github.com/rrrrrredy/beforedone",
+  "license": "Apache-2.0",
+  "keywords": [
+    "codex",
+    "coding-agents",
+    "verification",
+    "incident-analysis",
+    "replay"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "BeforeDone",
+    "shortDescription": "Make coding agents prove they are done",
+    "longDescription": "BeforeDone uses a local CLI and trusted Codex lifecycle hooks to bind completion claims to fresh evidence and turn observable failed-run events into replayable incident reports. The CLI must already be installed on PATH; install it with `go install github.com/rrrrrredy/beforedone/cmd/beforedone@latest`, then review the hooks with `/hooks`. This plugin never downloads the CLI.",
+    "developerName": "Song Luo",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://rrrrrredy.github.io/beforedone/",
+    "privacyPolicyURL": "https://rrrrrredy.github.io/beforedone/privacy.html",
+    "termsOfServiceURL": "https://rrrrrredy.github.io/beforedone/terms.html",
+    "defaultPrompt": [
+      "Verify this task with BeforeDone before declaring it complete.",
+      "Investigate this failed agent run with BeforeDone."
+    ],
+    "brandColor": "#E54836"
+  }
+}

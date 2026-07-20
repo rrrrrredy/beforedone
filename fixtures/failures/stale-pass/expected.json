@@ -1,0 +1,6 @@
+{
+  "initial_receipt": "PASS",
+  "mutation": "change a file matching relevant_files after the receipt is created",
+  "effective_verdict": "INCONCLUSIVE",
+  "stop_hook": "block"
+}

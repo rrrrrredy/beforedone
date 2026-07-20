@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rrrrrredy.github.io/beforedone/schemas/event.schema.json",
+  "title": "BeforeDone normalized event v1",
+  "type": "object",
+  "required": ["schema_version", "id", "occurred_at", "type", "source"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "type": {
+      "enum": ["SessionStarted", "PromptSubmitted", "ToolStarted", "ToolFinished", "AgentStopping", "SessionEnded"]
+    },
+    "source": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "session_id": { "type": "string", "maxLength": 256 },
+    "turn_id": { "type": "string", "maxLength": 256 },
+    "cwd": { "type": "string", "maxLength": 1024 },
+    "tool_name": { "type": "string", "maxLength": 256 },
+    "exit_code": { "type": "integer" },
+    "summary": { "type": "string", "maxLength": 20000 },
+    "attributes": {
+      "type": "object",
+      "maxProperties": 256,
+      "propertyNames": { "minLength": 1, "maxLength": 128 },
+      "additionalProperties": { "type": "string", "maxLength": 1024 }
+    }
+  },
+  "additionalProperties": false
+}

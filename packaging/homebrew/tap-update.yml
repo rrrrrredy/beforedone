@@ -1,0 +1,72 @@
+name: Update BeforeDone cask
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published BeforeDone tag, for example v1.0.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Validate tag
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "tag must look like v1.0.0"
+            exit 1
+          }
+
+      - name: Download generated cask from the canonical release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          rm -rf .download
+          mkdir -p .download Casks
+          gh release download "$TAG" \
+            --repo rrrrrredy/beforedone \
+            --pattern beforedone.rb \
+            --dir .download
+          ruby -c .download/beforedone.rb
+
+      - name: Install and run the candidate cask before publishing it
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          brew install --cask .download/beforedone.rb
+          test "$(beforedone version)" = "beforedone ${TAG#v}"
+          brew uninstall --cask beforedone
+
+      - name: Stage the tested cask
+        shell: bash
+        run: |
+          cp .download/beforedone.rb Casks/beforedone.rb
+
+      - name: Commit changed cask
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          git add Casks/beforedone.rb
+          if git diff --cached --quiet; then
+            echo "Cask already matches $TAG"
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "Update BeforeDone to $TAG"
+          git push

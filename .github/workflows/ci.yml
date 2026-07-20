@@ -1,0 +1,245 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+
+      - name: Verify Go modules
+        run: go mod verify
+
+      - name: Verify generated module files are current
+        shell: bash
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+      - name: Verify Go formatting
+        shell: bash
+        run: |
+          files="$(gofmt -l .)"
+          if [[ -n "$files" ]]; then
+            printf 'Go files need gofmt:\n%s\n' "$files"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test with race detector
+        run: go test -race -count=1 ./...
+
+      - name: Validate adapter fixtures through the public CLI
+        run: go run ./cmd/beforedone adapter test fixtures/adapters
+
+      - name: Validate public JSON schemas
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          expected = {
+              "event.schema.json",
+              "receipt.schema.json",
+              "incident.schema.json",
+              "replay-case.schema.json",
+              "adapter-manifest.schema.json",
+          }
+          schema_dir = Path("schemas")
+          found = {path.name for path in schema_dir.glob("*.schema.json")}
+          missing = sorted(expected - found)
+          if missing:
+              raise SystemExit(f"missing public schemas: {', '.join(missing)}")
+          for path in sorted(schema_dir.glob("*.schema.json")):
+              with path.open(encoding="utf-8") as handle:
+                  document = json.load(handle)
+              if not isinstance(document, dict):
+                  raise SystemExit(f"{path} must contain a JSON object")
+              if document.get("type") != "object":
+                  raise SystemExit(f"{path} must declare an object root")
+              print(f"validated {path}")
+          PY
+
+      - name: Check standalone and plugin skill copies for drift
+        run: python scripts/sync_plugin_skills.py --check
+
+      - name: Validate plugin, marketplace, hooks, and skills contract
+        run: python scripts/validate_distribution.py
+
+      - name: Build and reproduce the skills-only Directory submission bundle
+        shell: bash
+        run: |
+          first="$RUNNER_TEMP/directory-bundle-first"
+          second="$RUNNER_TEMP/directory-bundle-second"
+          python scripts/package_directory_skills.py --output-dir "$first"
+          python scripts/package_directory_skills.py --output-dir "$second"
+          first_zip="$(find "$first" -maxdepth 1 -type f -name '*.zip' -print -quit)"
+          second_zip="$(find "$second" -maxdepth 1 -type f -name '*.zip' -print -quit)"
+          test -n "$first_zip" && test -n "$second_zip"
+          cmp "$first_zip" "$second_zip"
+          python scripts/package_directory_skills.py --verify "$first_zip"
+
+      - name: Check GoReleaser configuration
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
+        with:
+          distribution: goreleaser
+          version: v2.17.0
+          args: check
+
+  platform-tests:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Python for distribution smoke helpers
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+
+      - name: Test
+        run: go test -count=1 ./...
+
+      - name: Build CLI on Unix for hook smoke test
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/beforedone-hook-bin"
+          go build -trimpath -o "$RUNNER_TEMP/beforedone-hook-bin/beforedone" ./cmd/beforedone
+
+      - name: Smoke test raw Unix hook command with CLI present and missing
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          command="$(python -c 'import json; print(json.load(open("plugins/beforedone/hooks/hooks.json", encoding="utf-8"))["hooks"]["Stop"][0]["hooks"][0]["command"])')"
+          export PLUGIN_ROOT="$PWD/plugins/beforedone"
+          payload="$(printf '{\"hook_event_name\":\"Stop\",\"session_id\":\"ci-unix\",\"cwd\":\"%s\",\"stop_hook_active\":false}' "$PWD")"
+
+          present_output="$(printf '%s' "$payload" | PATH="$RUNNER_TEMP/beforedone-hook-bin:/usr/bin:/bin" /bin/sh -c "$command")"
+          PRESENT_OUTPUT="$present_output" python - <<'PY'
+          import json
+          import os
+
+          value = json.loads(os.environ["PRESENT_OUTPUT"])
+          if value.get("decision") != "block" or "not configured" not in value.get("reason", ""):
+              raise SystemExit(f"unexpected CLI-present hook output: {value!r}")
+          PY
+
+          missing_output="$(printf '%s' "$payload" | PATH="/usr/bin:/bin" /bin/sh -c "$command")"
+          MISSING_OUTPUT="$missing_output" python - <<'PY'
+          import json
+          import os
+
+          value = json.loads(os.environ["MISSING_OUTPUT"])
+          message = value.get("systemMessage", "")
+          if "BeforeDone CLI is required" not in message or "go install" not in message:
+              raise SystemExit(f"unexpected CLI-missing hook output: {value!r}")
+          PY
+
+      - name: Build CLI on Windows for hook smoke test
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $bin = Join-Path $env:RUNNER_TEMP 'beforedone-hook-bin'
+          New-Item -ItemType Directory -Force $bin | Out-Null
+          go build -trimpath -o (Join-Path $bin 'beforedone.exe') ./cmd/beforedone
+
+      - name: Smoke test raw Windows hook command with CLI present and missing
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $hooks = Get-Content plugins/beforedone/hooks/hooks.json -Raw | ConvertFrom-Json
+          $command = $hooks.hooks.Stop[0].hooks[0].commandWindows
+          $pluginRoot = (Resolve-Path plugins/beforedone).Path
+          $payload = @{
+            hook_event_name = 'Stop'
+            session_id = 'ci-windows'
+            cwd = $env:GITHUB_WORKSPACE
+            stop_hook_active = $false
+          } | ConvertTo-Json -Compress
+
+          function Invoke-RawHook([string] $ProcessPath, [string] $InputJson) {
+            $start = [Diagnostics.ProcessStartInfo]::new()
+            $start.FileName = Join-Path $PSHOME 'pwsh.exe'
+            $start.UseShellExecute = $false
+            $start.RedirectStandardInput = $true
+            $start.RedirectStandardOutput = $true
+            $start.RedirectStandardError = $true
+            $start.CreateNoWindow = $true
+            $start.WorkingDirectory = $env:GITHUB_WORKSPACE
+            $start.ArgumentList.Add('-NoLogo')
+            $start.ArgumentList.Add('-NoProfile')
+            $start.ArgumentList.Add('-NonInteractive')
+            $start.ArgumentList.Add('-Command')
+            $start.ArgumentList.Add($command)
+            $start.Environment['PLUGIN_ROOT'] = $pluginRoot
+            $start.Environment['PATH'] = $ProcessPath
+            $process = [Diagnostics.Process]::Start($start)
+            $process.StandardInput.Write($InputJson)
+            $process.StandardInput.Close()
+            $stdout = $process.StandardOutput.ReadToEnd()
+            $stderr = $process.StandardError.ReadToEnd()
+            $process.WaitForExit()
+            if ($process.ExitCode -ne 0) {
+              throw "hook exited $($process.ExitCode): $stderr"
+            }
+            if ($stderr) {
+              throw "hook wrote unexpected stderr: $stderr"
+            }
+            return $stdout.Trim()
+          }
+
+          $bin = Join-Path $env:RUNNER_TEMP 'beforedone-hook-bin'
+          $safePath = (($env:PATH -split ';') | Where-Object {
+            $_ -and -not (Test-Path -LiteralPath (Join-Path $_ 'beforedone.exe') -PathType Leaf)
+          }) -join ';'
+          $present = Invoke-RawHook "$bin;$safePath" $payload | ConvertFrom-Json
+          if ($present.decision -ne 'block' -or $present.reason -notmatch 'not configured') {
+            throw "unexpected CLI-present hook output: $($present | ConvertTo-Json -Compress)"
+          }
+
+          $missing = Invoke-RawHook $safePath $payload | ConvertFrom-Json
+          if ($missing.systemMessage -notmatch 'BeforeDone CLI is required' -or $missing.systemMessage -notmatch 'go install') {
+            throw "unexpected CLI-missing hook output: $($missing | ConvertTo-Json -Compress)"
+          }

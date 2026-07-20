@@ -1,0 +1,13 @@
+{
+  "input": {
+    "session_id": "fixture-session",
+    "turn_id": "fixture-turn",
+    "cwd": "/repo",
+    "hook_event_name": "SubagentStart",
+    "agent_id": "agent-fixture",
+    "agent_type": "reviewer"
+  },
+  "expected": {
+    "type": "SessionStarted"
+  }
+}

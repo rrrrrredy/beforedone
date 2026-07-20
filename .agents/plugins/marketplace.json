@@ -1,0 +1,20 @@
+{
+  "name": "beforedone",
+  "interface": {
+    "displayName": "BeforeDone"
+  },
+  "plugins": [
+    {
+      "name": "beforedone",
+      "source": {
+        "source": "local",
+        "path": "./plugins/beforedone"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

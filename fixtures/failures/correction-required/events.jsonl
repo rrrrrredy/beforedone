@@ -1,0 +1,2 @@
+{"schema_version":1,"id":"event-edit","occurred_at":"2026-07-17T00:00:00Z","type":"ToolFinished","source":"codex","session_id":"fixture","tool_name":"apply_patch","exit_code":0,"summary":"change applied"}
+{"schema_version":1,"id":"event-premature-stop","occurred_at":"2026-07-17T00:01:00Z","type":"AgentStopping","source":"codex","session_id":"fixture"}

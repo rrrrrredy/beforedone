@@ -1,0 +1,102 @@
+version: 2
+
+project_name: beforedone
+
+metadata:
+  mod_timestamp: "{{ .CommitTimestamp }}"
+
+before:
+  hooks:
+    - go mod verify
+    - go test ./...
+
+builds:
+  - id: beforedone
+    main: ./cmd/beforedone
+    binary: beforedone
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -buildid= -X main.version={{ .Version }}
+
+archives:
+  - id: beforedone
+    ids:
+      - beforedone
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: >-
+      beforedone_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - LICENSE
+      - NOTICE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+sboms:
+  - id: archives
+    artifacts: archive
+    documents:
+      - "${artifact}.sbom.spdx.json"
+
+homebrew_casks:
+  - name: beforedone
+    ids:
+      - beforedone
+    repository:
+      owner: rrrrrredy
+      name: homebrew-tap
+    binaries:
+      - beforedone
+    homepage: https://rrrrrredy.github.io/beforedone/
+    description: Require fresh evidence before coding agents declare completion
+    url:
+      template: >-
+        https://github.com/rrrrrredy/beforedone/releases/download/{{ .Tag }}/{{ .ArtifactName }}
+      verified: github.com/rrrrrredy/beforedone/
+    skip_upload: true
+
+scoops:
+  - name: beforedone
+    homepage: https://rrrrrredy.github.io/beforedone/
+    description: Require fresh evidence before coding agents declare completion
+    license: Apache-2.0
+    url_template: >-
+      https://github.com/rrrrrredy/beforedone/releases/download/{{ .Tag }}/{{ .ArtifactName }}
+    skip_upload: true
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+      - Merge pull request
+      - Merge branch
+
+release:
+  draft: true
+  replace_existing_draft: true
+  replace_existing_artifacts: true
+  prerelease: false
+  name_template: "BeforeDone {{ .Tag }}"
+
+report_sizes: true

@@ -1,0 +1,18 @@
+schema_version: 1
+checks:
+  unit:
+    argv:
+      - 'C:\Windows\System32\findstr.exe'
+      - '/L'
+      - '/C:a + b'
+      - 'calculator.go'
+    relevant_files:
+      - 'calculator.go'
+    working_directory: '.'
+    timeout_seconds: 30
+capture:
+  max_output_bytes: 1048576
+  redact_patterns:
+    - '(?i)(api[_-]?key|token|password|secret)\s*[:=]\s*[^\s]+'
+reports:
+  retain: 10

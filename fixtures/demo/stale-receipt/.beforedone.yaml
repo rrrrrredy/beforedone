@@ -1,0 +1,13 @@
+schema_version: 1
+checks:
+  unit:
+    argv: ["go", "test", "./..."]
+    relevant_files: ["**/*.go", "go.mod"]
+    working_directory: "."
+    timeout_seconds: 120
+capture:
+  max_output_bytes: 1048576
+  redact_patterns:
+    - '(?i)(api[_-]?key|token|password|secret)\s*[:=]\s*[^\s]+'
+reports:
+  retain: 10

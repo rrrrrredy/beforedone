@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "replay-20260717T073342.211Z-2c5b27f17516365d",
+  "created_at": "2026-07-17T07:33:42.2113826Z",
+  "incident_id": "incident-20260717T073342.210Z-52b214b4f029bd2f",
+  "head_commit": "0031474c33f4587fb70bc5a73d6b712aa220d2ef",
+  "verdict": "FAIL",
+  "first_observable_divergence": {
+    "precision": "exact_event",
+    "event_id": "event-20260717T073324.357Z-7f559d0a78899562",
+    "reason": "A tool first returned a non-zero exit code at this event."
+  },
+  "event_ids": [
+    "event-20260717T073038.780Z-5e423c7ff64e06b1",
+    "event-20260717T073107.601Z-b5a8ca61ea79d33f",
+    "event-20260717T073143.513Z-f2f84f4890cd91ab",
+    "event-20260717T073207.004Z-76b4665cdda2cfc1",
+    "event-20260717T073228.493Z-c83426c9f5da015f",
+    "event-20260717T073324.357Z-7f559d0a78899562"
+  ]
+}

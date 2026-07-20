@@ -1,0 +1,133 @@
+name: Pages
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Validate static site
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the CI-tested commit
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Verify project-site paths and local links
+        shell: bash
+        run: |
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          from urllib.parse import unquote, urlsplit
+          import re
+
+          root = Path("site").resolve()
+          if not (root / "index.html").is_file():
+              raise SystemExit("site/index.html is required")
+          if (root / "CNAME").exists():
+              raise SystemExit("CNAME is forbidden: BeforeDone uses the free GitHub project URL")
+
+          errors = []
+
+          class Links(HTMLParser):
+              def __init__(self, source):
+                  super().__init__()
+                  self.source = source
+
+              def handle_starttag(self, _tag, attrs):
+                  for name, value in attrs:
+                      if name in {"href", "src", "poster"} and value:
+                          check(self.source, value)
+
+          def check(source, raw):
+              if raw.startswith(("#", "mailto:", "tel:", "data:", "javascript:", "//")):
+                  return
+              parsed = urlsplit(raw)
+              if parsed.scheme in {"http", "https"}:
+                  return
+              path = unquote(parsed.path)
+              if not path:
+                  return
+              if path.startswith("/"):
+                  if not (path == "/beforedone" or path.startswith("/beforedone/")):
+                      errors.append(f"{source}: root path {raw!r} must start with /beforedone/")
+                      return
+                  path = path.removeprefix("/beforedone/")
+              target = (root / path) if raw.startswith("/") else (source.parent / path)
+              if target.is_dir():
+                  target = target / "index.html"
+              if not target.exists():
+                  errors.append(f"{source}: local target {raw!r} does not exist")
+
+          for html in root.rglob("*.html"):
+              Links(html).feed(html.read_text(encoding="utf-8"))
+
+          css_url = re.compile(r"url\(\s*['\"]?([^)'\"]+)")
+          for css in root.rglob("*.css"):
+              for value in css_url.findall(css.read_text(encoding="utf-8")):
+                  check(css, value.strip())
+
+          if errors:
+              raise SystemExit("\n".join(errors))
+          print("validated GitHub Pages base path /beforedone/")
+          PY
+
+      - name: Stage immutable Pages artifact
+        shell: bash
+        run: |
+          mkdir _site
+          cp -a site/. _site/
+          mkdir -p _site/schemas
+          cp schemas/*.schema.json _site/schemas/
+          touch _site/.nojekyll
+
+          expected=(
+            adapter-manifest.schema.json
+            event.schema.json
+            incident.schema.json
+            receipt.schema.json
+            replay-case.schema.json
+          )
+          for schema in "${expected[@]}"; do
+            test -f "_site/schemas/$schema" || {
+              echo "missing staged schema: $schema"
+              exit 1
+            }
+          done
+
+      - name: Configure Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

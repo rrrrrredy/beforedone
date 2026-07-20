@@ -1,0 +1,464 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build draft ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out tag and full history
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Require a final SemVer tag on main
+        shell: bash
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tags must be final SemVer tags such as v1.0.0."
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "The release commit is not reachable from main."
+            exit 1
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+
+      - name: Re-run release quality gates
+        shell: bash
+        run: |
+          go mod verify
+          go vet ./...
+          go test -count=1 ./...
+          go run ./cmd/beforedone adapter test fixtures/adapters
+          python scripts/sync_plugin_skills.py --check
+          python scripts/validate_distribution.py \
+            --expected-version "${GITHUB_REF_NAME#v}"
+
+      - name: Install Syft for SPDX SBOM generation
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          syft-version: v1.44.0
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
+        with:
+          distribution: goreleaser
+          version: v2.17.0
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build the skills-only OpenAI Plugin Directory bundle
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          python scripts/package_directory_skills.py \
+            --version "$version" \
+            --output-dir dist/directory
+          python scripts/package_directory_skills.py \
+            --version "$version" \
+            --verify "dist/directory/beforedone-openai-directory-skills-v${version}.zip"
+
+      - name: Verify release matrix, checksums, SBOMs, and manifests
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          expected=(
+            "beforedone_${version}_darwin_amd64.tar.gz"
+            "beforedone_${version}_darwin_arm64.tar.gz"
+            "beforedone_${version}_linux_amd64.tar.gz"
+            "beforedone_${version}_linux_arm64.tar.gz"
+            "beforedone_${version}_windows_amd64.zip"
+            "beforedone_${version}_windows_arm64.zip"
+          )
+          for artifact in "${expected[@]}"; do
+            test -f "dist/$artifact" || { echo "missing dist/$artifact"; exit 1; }
+          done
+          (cd dist && sha256sum --check checksums.txt)
+
+          for os in darwin linux windows; do
+            for arch in amd64 arm64; do
+              archive="dist/beforedone_${version}_${os}_${arch}"
+              target="dist/inspect/${os}-${arch}"
+              mkdir -p "$target"
+              if [[ "$os" == windows ]]; then
+                unzip -q "${archive}.zip" -d "$target"
+                binary="$target/beforedone.exe"
+              else
+                tar -xzf "${archive}.tar.gz" -C "$target"
+                binary="$target/beforedone"
+              fi
+              metadata="$(go version -m "$binary")"
+              grep -F "GOOS=$os" <<<"$metadata" >/dev/null
+              grep -F "GOARCH=$arch" <<<"$metadata" >/dev/null
+            done
+          done
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          sboms = sorted(Path("dist").glob("*.sbom.spdx.json"))
+          if len(sboms) != 6:
+              raise SystemExit(f"expected 6 archive SBOMs, found {len(sboms)}")
+          for path in sboms:
+              with path.open(encoding="utf-8") as handle:
+                  document = json.load(handle)
+              if document.get("spdxVersion") != "SPDX-2.3":
+                  raise SystemExit(f"{path} is not an SPDX 2.3 document")
+              print(f"validated {path}")
+          PY
+
+          cask="$(find dist -type f -name beforedone.rb -print -quit)"
+          scoop="$(find dist -type f -name beforedone.json -print -quit)"
+          test -n "$cask" || { echo "missing generated Homebrew cask"; exit 1; }
+          test -n "$scoop" || { echo "missing generated Scoop manifest"; exit 1; }
+          ruby -c "$cask"
+          python -m json.tool "$scoop" >/dev/null
+
+          mkdir -p dist/package-manifests
+          cp "$cask" dist/package-manifests/beforedone.rb
+          cp "$scoop" dist/package-manifests/beforedone.json
+
+          directory_bundle="dist/directory/beforedone-openai-directory-skills-v${version}.zip"
+          test -f "$directory_bundle" || { echo "missing Directory skills bundle"; exit 1; }
+          test -f "$directory_bundle.sha256" || { echo "missing Directory bundle checksum"; exit 1; }
+          (
+            cd "$(dirname "$directory_bundle")"
+            sha256sum --check "$(basename "$directory_bundle").sha256"
+          )
+
+          mkdir -p dist/smoke
+          tar -xzf "dist/beforedone_${version}_linux_amd64.tar.gz" -C dist/smoke
+          dist/smoke/beforedone --help >/dev/null
+
+      - name: Attach package-manager and Directory assets to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" \
+            dist/package-manifests/beforedone.rb \
+            dist/package-manifests/beforedone.json \
+            dist/directory/beforedone-openai-directory-skills-v*.zip \
+            dist/directory/beforedone-openai-directory-skills-v*.zip.sha256 \
+            --clobber
+
+      - name: Attest released archives and checksums
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+            dist/package-manifests/beforedone.rb
+            dist/package-manifests/beforedone.json
+            dist/directory/*.zip
+            dist/directory/*.zip.sha256
+
+  draft-smoke:
+    name: Draft artifact smoke test on ${{ matrix.os }}
+    needs: release
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_os: linux
+            archive_ext: tar.gz
+          - os: macos-latest
+            artifact_os: darwin
+            archive_ext: tar.gz
+          - os: windows-latest
+            artifact_os: windows
+            archive_ext: zip
+    steps:
+      - name: Set up Go for tag-install verification
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.26.x"
+          cache: false
+
+      - name: Download draft release assets with authentication
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          artifact="beforedone_${version}_${{ matrix.artifact_os }}_amd64.${{ matrix.archive_ext }}"
+          gh release download "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "$artifact" \
+            --pattern checksums.txt \
+            --dir download
+          printf '%s' "$artifact" > download/artifact-name
+
+      - name: Verify and run on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          artifact="$(cat download/artifact-name)"
+          expected="$(grep "  $artifact$" download/checksums.txt | cut -d' ' -f1)"
+          actual="$(sha256sum "download/$artifact" | cut -d' ' -f1)"
+          test -n "$expected" && test "$actual" = "$expected"
+          mkdir extracted
+          tar -xzf "download/$artifact" -C extracted
+          extracted/beforedone --help >/dev/null
+
+      - name: Verify and run on macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          artifact="$(cat download/artifact-name)"
+          expected="$(grep "  $artifact$" download/checksums.txt | cut -d' ' -f1)"
+          actual="$(shasum -a 256 "download/$artifact" | cut -d' ' -f1)"
+          test -n "$expected" && test "$actual" = "$expected"
+          mkdir extracted
+          tar -xzf "download/$artifact" -C extracted
+          extracted/beforedone --help >/dev/null
+
+      - name: Verify and run on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $artifact = Get-Content download/artifact-name -Raw
+          $artifact = $artifact.Trim()
+          $line = Get-Content download/checksums.txt |
+            Where-Object { $_ -match "  $([regex]::Escape($artifact))$" } |
+            Select-Object -First 1
+          if (-not $line) { throw "No checksum for $artifact" }
+          $expected = ($line -split '\s+')[0].ToLowerInvariant()
+          $actual = (Get-FileHash "download/$artifact" -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw "Checksum mismatch for $artifact" }
+          Expand-Archive "download/$artifact" -DestinationPath extracted
+          & ./extracted/beforedone.exe --help | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "beforedone --help failed" }
+
+      - name: Verify tag-based go install before publishing on Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          GOPROXY: direct
+          GH_TOKEN: ""
+          GITHUB_TOKEN: ""
+        run: |
+          mkdir "$RUNNER_TEMP/beforedone-go-install"
+          GOBIN="$RUNNER_TEMP/beforedone-go-install" \
+            go install "github.com/rrrrrredy/beforedone/cmd/beforedone@$GITHUB_REF_NAME"
+          reported="$("$RUNNER_TEMP/beforedone-go-install/beforedone" version)"
+          test "$reported" = "beforedone ${GITHUB_REF_NAME#v}"
+
+      - name: Verify tag-based go install before publishing on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          GOPROXY: direct
+          GH_TOKEN: ""
+          GITHUB_TOKEN: ""
+        run: |
+          $env:GOBIN = Join-Path $env:RUNNER_TEMP 'beforedone-go-install'
+          New-Item -ItemType Directory -Force $env:GOBIN | Out-Null
+          go install "github.com/rrrrrredy/beforedone/cmd/beforedone@$env:GITHUB_REF_NAME"
+          if ($LASTEXITCODE -ne 0) { throw 'go install failed' }
+          $reported = (& (Join-Path $env:GOBIN 'beforedone.exe') version).Trim()
+          if ($reported -ne "beforedone $($env:GITHUB_REF_NAME.TrimStart('v'))") {
+            throw "go install reported unexpected version: $reported"
+          }
+
+  publish:
+    name: Publish tested draft release
+    needs: draft-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Make release public and mark latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          gh release edit "$GITHUB_REF_NAME"
+          --repo "$GITHUB_REPOSITORY"
+          --draft=false
+          --latest
+
+  public-smoke:
+    name: Anonymous public install smoke on ${{ matrix.os }}
+    needs: publish
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_os: linux
+            archive_ext: tar.gz
+          - os: macos-latest
+            artifact_os: darwin
+            archive_ext: tar.gz
+          - os: windows-latest
+            artifact_os: windows
+            archive_ext: zip
+    steps:
+      - name: Download public assets without credentials on Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          GH_TOKEN: ""
+          GITHUB_TOKEN: ""
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          artifact="beforedone_${version}_${{ matrix.artifact_os }}_amd64.${{ matrix.archive_ext }}"
+          base="https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME"
+          mkdir download
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output "download/$artifact" "$base/$artifact"
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output download/checksums.txt "$base/checksums.txt"
+          printf '%s' "$artifact" > download/artifact-name
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            directory="beforedone-openai-directory-skills-v${version}.zip"
+            curl --fail --location --retry 5 --retry-all-errors \
+              --output "download/$directory" "$base/$directory"
+            curl --fail --location --retry 5 --retry-all-errors \
+              --output "download/$directory.sha256" "$base/$directory.sha256"
+          fi
+
+      - name: Download public assets without credentials on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          GH_TOKEN: ""
+          GITHUB_TOKEN: ""
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          $artifact = "beforedone_${version}_${{ matrix.artifact_os }}_amd64.${{ matrix.archive_ext }}"
+          $base = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:GITHUB_REF_NAME"
+          New-Item -ItemType Directory -Force download | Out-Null
+          Invoke-WebRequest -Uri "$base/$artifact" -OutFile "download/$artifact"
+          Invoke-WebRequest -Uri "$base/checksums.txt" -OutFile download/checksums.txt
+          Set-Content -NoNewline download/artifact-name $artifact
+
+      - name: Verify and run public archive on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          artifact="$(cat download/artifact-name)"
+          expected="$(grep "  $artifact$" download/checksums.txt | cut -d' ' -f1)"
+          actual="$(sha256sum "download/$artifact" | cut -d' ' -f1)"
+          test -n "$expected" && test "$actual" = "$expected"
+          mkdir extracted
+          tar -xzf "download/$artifact" -C extracted
+          test "$(extracted/beforedone version)" = "beforedone ${GITHUB_REF_NAME#v}"
+
+      - name: Verify and run public archive on macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          artifact="$(cat download/artifact-name)"
+          expected="$(grep "  $artifact$" download/checksums.txt | cut -d' ' -f1)"
+          actual="$(shasum -a 256 "download/$artifact" | cut -d' ' -f1)"
+          test -n "$expected" && test "$actual" = "$expected"
+          mkdir extracted
+          tar -xzf "download/$artifact" -C extracted
+          test "$(extracted/beforedone version)" = "beforedone ${GITHUB_REF_NAME#v}"
+
+      - name: Verify public skills-only Directory asset on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          directory="beforedone-openai-directory-skills-v${version}.zip"
+          (
+            cd download
+            sha256sum --check "$directory.sha256"
+          )
+          DIRECTORY_ZIP="download/$directory" EXPECTED_VERSION="$version" python - <<'PY'
+          import json
+          import os
+          import zipfile
+          from pathlib import PurePosixPath
+
+          path = os.environ["DIRECTORY_ZIP"]
+          with zipfile.ZipFile(path) as bundle:
+              names = bundle.namelist()
+              manifest = json.loads(bundle.read(".codex-plugin/plugin.json"))
+          if manifest.get("version") != os.environ["EXPECTED_VERSION"]:
+              raise SystemExit("Directory bundle version mismatch")
+          if manifest.get("skills") != "./skills/":
+              raise SystemExit("Directory bundle is not skills-only")
+          if set(manifest).intersection({"hooks", "mcpServers", "apps"}):
+              raise SystemExit("Directory manifest advertises a forbidden component")
+          required = {
+              "skills/verify-before-done/SKILL.md",
+              "skills/investigate-agent-incident/SKILL.md",
+          }
+          if not required.issubset(names):
+              raise SystemExit("Directory bundle is missing required skills")
+          for raw in names:
+              parts = PurePosixPath(raw).parts
+              if ".." in parts or any(part in {"hooks", "scripts"} for part in parts):
+                  raise SystemExit(f"unsafe or forbidden Directory entry: {raw}")
+          print("validated anonymously downloaded skills-only Directory bundle")
+          PY
+
+      - name: Verify and run public archive on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $artifact = (Get-Content download/artifact-name -Raw).Trim()
+          $line = Get-Content download/checksums.txt |
+            Where-Object { $_ -match "  $([regex]::Escape($artifact))$" } |
+            Select-Object -First 1
+          if (-not $line) { throw "No checksum for $artifact" }
+          $expected = ($line -split '\s+')[0].ToLowerInvariant()
+          $actual = (Get-FileHash "download/$artifact" -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw "Checksum mismatch for $artifact" }
+          Expand-Archive "download/$artifact" -DestinationPath extracted
+          $reported = (& ./extracted/beforedone.exe version).Trim()
+          if ($reported -ne "beforedone $($env:GITHUB_REF_NAME.TrimStart('v'))") {
+            throw "archive reported unexpected version: $reported"
+          }
+
+  redraft-on-public-smoke-failure:
+    name: Re-draft a release that failed public verification
+    needs: public-smoke
+    if: ${{ failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Remove failed release from public visibility
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          gh release edit "$GITHUB_REF_NAME"
+          --repo "$GITHUB_REPOSITORY"
+          --draft=true
+          --latest=false

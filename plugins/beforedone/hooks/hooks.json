@@ -1,0 +1,95 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh \"${PLUGIN_ROOT}/scripts/codex-hook.sh\"",
+            "commandWindows": "Set-ExecutionPolicy -Scope Process Bypass -Force; & ([IO.Path]::Combine($env:PLUGIN_ROOT, 'scripts', 'codex-hook.ps1'))",
+            "timeout": 30,
+            "statusMessage": "Starting BeforeDone"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh \"${PLUGIN_ROOT}/scripts/codex-hook.sh\"",
+            "commandWindows": "Set-ExecutionPolicy -Scope Process Bypass -Force; & ([IO.Path]::Combine($env:PLUGIN_ROOT, 'scripts', 'codex-hook.ps1'))",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh \"${PLUGIN_ROOT}/scripts/codex-hook.sh\"",
+            "commandWindows": "Set-ExecutionPolicy -Scope Process Bypass -Force; & ([IO.Path]::Combine($env:PLUGIN_ROOT, 'scripts', 'codex-hook.ps1'))",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh \"${PLUGIN_ROOT}/scripts/codex-hook.sh\"",
+            "commandWindows": "Set-ExecutionPolicy -Scope Process Bypass -Force; & ([IO.Path]::Combine($env:PLUGIN_ROOT, 'scripts', 'codex-hook.ps1'))",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh \"${PLUGIN_ROOT}/scripts/codex-hook.sh\"",
+            "commandWindows": "Set-ExecutionPolicy -Scope Process Bypass -Force; & ([IO.Path]::Combine($env:PLUGIN_ROOT, 'scripts', 'codex-hook.ps1'))",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh \"${PLUGIN_ROOT}/scripts/codex-hook.sh\"",
+            "commandWindows": "Set-ExecutionPolicy -Scope Process Bypass -Force; & ([IO.Path]::Combine($env:PLUGIN_ROOT, 'scripts', 'codex-hook.ps1'))",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh \"${PLUGIN_ROOT}/scripts/codex-hook.sh\"",
+            "commandWindows": "Set-ExecutionPolicy -Scope Process Bypass -Force; & ([IO.Path]::Combine($env:PLUGIN_ROOT, 'scripts', 'codex-hook.ps1'))",
+            "timeout": 90,
+            "statusMessage": "Checking BeforeDone evidence"
+          }
+        ]
+      }
+    ]
+  }
+}

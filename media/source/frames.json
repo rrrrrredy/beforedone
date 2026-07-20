@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "run_id": "bd-demo-20260717",
+  "captured_at": "2026-07-17T07:35:00Z",
+  "cli_sha256": "a2c53de6b1f0fa0cc55da74b4ab6dfe9b96e83968b72308879ede2f7bc6b51b2",
+  "repository_commit": "0031474c33f4587fb70bc5a73d6b712aa220d2ef",
+  "scenes": [
+    {
+      "id": "stop-wire",
+      "step": "01",
+      "label": "CODEX STOP HOOK · WIRE INVOCATION",
+      "duration_ms": 8500,
+      "caption": "Codex tries to stop. The plugin sends the real Stop event to BeforeDone.",
+      "source": "raw/stop-no-evidence.json + plugins/beforedone/scripts/codex-hook.ps1",
+      "content": "PS> # stdin from the Codex Stop hook\nPS> {\"hook_event_name\":\"Stop\",\"stop_hook_active\":false,...}\nPS> powershell -ExecutionPolicy Bypass -File codex-hook.ps1\n\n{\"decision\":\"block\",\n \"reason\":\"BeforeDone requires fresh evidence before completion:\\n- unit: no evidence receipt; run `beforedone check unit`\"}\n\nProcess exit: 0   Hook decision: BLOCK"
+    },
+    {
+      "id": "failed-check",
+      "step": "02",
+      "label": "VERIFIER · REAL FAILED RUN",
+      "duration_ms": 9000,
+      "caption": "The required verifier runs through BeforeDone. A printed PASS could not override this exit code.",
+      "source": "artifacts/failed-receipt.json + raw/failed-check.log",
+      "content": "PS> git diff -- calculator.go\n-func Add(a, b int) int { return a + b }\n+func Add(a, b int) int { return a - b }\n\nPS> beforedone check unit\nFAIL unit (exit 1)\nReceipt: .git\\beforedone\\receipts\\receipt-20260717T073258.350Z-229354e2f245c607.json\n\n--- FAIL: TestAdd (0.00s)\n    calculator_test.go:7: Add(20, 22) = -2, want 42\nFAIL  example.com/beforedone-demo"
+    },
+    {
+      "id": "incident-cli",
+      "step": "03",
+      "label": "INCIDENT LAB · ARTIFACT GENERATION",
+      "duration_ms": 7500,
+      "caption": "Incident Lab turns the observable event ledger, receipt, diff, and correction into replayable artifacts.",
+      "source": "artifacts/incident.json + artifacts/replay-case.json",
+      "content": "PS> beforedone incident --correction \"The test proves Add returns -2. Fix addition before claiming completion.\"\n\nIncident incident-20260717T073342.210Z-52b214b4f029bd2f · FAIL\nHTML: .git\\beforedone\\incidents\\incident-...\\report.html\nJSON: .git\\beforedone\\incidents\\incident-...\\incident.json\nReplay: .git\\beforedone\\incidents\\incident-...\\replay-case.json\n\nFirst Observable Divergence: exact_event"
+    },
+    {
+      "id": "fresh-pass",
+      "step": "04",
+      "label": "REPAIR · FRESH PASS",
+      "duration_ms": 9000,
+      "caption": "After the bug is fixed, the same required check produces a new PASS bound to current relevant files.",
+      "source": "artifacts/fresh-pass-receipt.json",
+      "content": "PS> (Get-Content calculator.go).Replace('a - b','a + b') | Set-Content calculator.go\nPS> beforedone check unit\n\nPASS unit (exit 0)\nReceipt: .git\\beforedone\\receipts\\receipt-20260717T073450.451Z-e5f04069da4d0801.json\n\nPS> beforedone receipt unit\nPASS unit · fresh=true\nFingerprint: sha256:542199c8dbabc9f226a4d857304933b172680b878c6f8ed4b4391301e0f45a41"
+    },
+    {
+      "id": "incident-report",
+      "step": "05",
+      "label": "SELF-CONTAINED HTML · REAL INCIDENT",
+      "duration_ms": 10500,
+      "caption": "The real offline HTML report shows the earliest divergence the available evidence can prove.",
+      "source": "artifacts/incident-report.html",
+      "image": "rendered/incident-video.png"
+    },
+    {
+      "id": "replay-analyze",
+      "step": "06",
+      "label": "REPLAY ANALYZE · EVIDENCE ONLY",
+      "duration_ms": 7000,
+      "caption": "Analyze replays BeforeDone's judgment only. It never runs a verifier or an imported command.",
+      "source": "artifacts/replay-case.json",
+      "content": "PS> beforedone replay analyze .git\\beforedone\\incidents\\incident-...\\replay-case.json\n\nreplay-20260717T073342.211Z-2c5b27f17516365d · FAIL\nFOD: exact_event — A tool first returned a non-zero exit code at this event.\nEvidence-only analysis completed.\nNo verifier or imported command was executed."
+    },
+    {
+      "id": "replay-verify",
+      "step": "07",
+      "label": "REPLAY VERIFY · DEFAULT DRY RUN",
+      "duration_ms": 7500,
+      "caption": "Verify is a dry run by default, and its command comes only from the current repository policy.",
+      "source": "artifacts/replay-case.json + .beforedone.yaml",
+      "content": "PS> beforedone replay verify .git\\beforedone\\incidents\\incident-...\\replay-case.json\n\nDRY RUN for replay-20260717T073342.211Z-2c5b27f17516365d\nat 0031474c33f4587fb70bc5a73d6b712aa220d2ef\nCommands come only from current .beforedone.yaml;\nimported commands are ignored.\n\n  unit: [\"go\" \"test\" \"./...\"] (cwd .)"
+    },
+    {
+      "id": "public-links",
+      "step": "08",
+      "label": "BEFOREDONE · OPEN SOURCE",
+      "duration_ms": 7500,
+      "caption": "BeforeDone is open source: the product site and GitHub repository are the two public entry points.",
+      "source": "site/index.html",
+      "image": "rendered/site-video.png",
+      "urls": [
+        "https://rrrrrredy.github.io/beforedone/",
+        "https://github.com/rrrrrredy/beforedone"
+      ]
+    }
+  ]
+}

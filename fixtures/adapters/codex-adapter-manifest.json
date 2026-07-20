@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "name": "codex",
+  "version": "1.0.0",
+  "capabilities": {
+    "tool_events": true,
+    "stop_retry": true,
+    "subagents": true,
+    "transcript": false
+  },
+  "event_map": {
+    "SessionStart": "SessionStarted",
+    "SubagentStart": "SessionStarted",
+    "PreToolUse": "ToolStarted",
+    "PostToolUse": "ToolFinished",
+    "UserPromptSubmit": "PromptSubmitted",
+    "SubagentStop": "AgentStopping",
+    "Stop": "AgentStopping"
+  }
+}

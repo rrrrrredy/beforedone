@@ -1,0 +1,7 @@
+{
+  "verdict": "FAIL",
+  "first_observable_divergence": {
+    "precision": "exact_event",
+    "event_id": "event-failed-test"
+  }
+}

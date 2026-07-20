@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Before Done"
+  short_description: "Require fresh evidence before claiming completion"
+  default_prompt: "Use $verify-before-done to verify this task before declaring it complete."

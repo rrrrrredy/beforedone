@@ -1,0 +1,22 @@
+# Local BeforeDone runtime/export data
+.beforedone/
+beforedone-report/
+
+# Build output
+dist/
+bin/
+coverage.out
+/beforedone
+/beforedone.exe
+__pycache__/
+*.py[cod]
+
+# Site and QA scratch
+site/.qa/
+tmp/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,31 @@
+1
+00:00:00,000 --> 00:00:05,800
+Codex sends a real Stop event. BeforeDone blocks completion because no evidence receipt exists.
+
+2
+00:00:05,800 --> 00:00:16,800
+The required verifier runs on the changed file and records a signed FAIL receipt.
+
+3
+00:00:16,800 --> 00:00:36,133
+The bug is repaired. A new check produces a fresh PASS, and the next Stop is allowed.
+
+4
+00:00:36,133 --> 00:00:50,269
+Incident Lab writes real HTML, JSON, and Replay Case artifacts, locating an exact failing event.
+
+5
+00:00:50,269 --> 00:01:00,269
+The self-contained report opens in a real browser and moves from First Observable Divergence into the Timeline.
+
+6
+00:01:00,269 --> 00:01:07,300
+Replay analyze repeats the evidence-only judgment without running a command.
+
+7
+00:01:07,300 --> 00:01:15,208
+Replay verify stays a dry run and takes its command only from the current repository policy.
+
+8
+00:01:15,208 --> 00:01:23,208
+BeforeDone is open source. The product site and GitHub repository are the public entry points.

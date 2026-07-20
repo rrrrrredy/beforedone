@@ -1,0 +1,83 @@
+name: Update BeforeDone Scoop manifest
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published BeforeDone tag, for example v1.0.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Validate tag
+        shell: pwsh
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          if ($env:TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') {
+            throw 'tag must look like v1.0.0'
+          }
+
+      - name: Download generated manifest from the canonical release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          Remove-Item -Recurse -Force .download -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force .download | Out-Null
+          gh release download $env:TAG --repo rrrrrredy/beforedone --pattern beforedone.json --dir .download
+          if ($LASTEXITCODE -ne 0) { throw 'release manifest download failed' }
+          Get-Content .download/beforedone.json -Raw | ConvertFrom-Json | Out-Null
+
+      - name: Install and run the candidate manifest before publishing it
+        shell: pwsh
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          # Pin the official Scoop installer so a moving bootstrap script cannot
+          # change the release gate between runs.
+          Invoke-RestMethod https://raw.githubusercontent.com/ScoopInstaller/Install/b0ee913725139b816f9178163af0aecdba07a7ed/install.ps1 -OutFile install-scoop.ps1
+          & ./install-scoop.ps1 -RunAsAdmin
+          if ($LASTEXITCODE -ne 0) { throw 'Scoop installation failed' }
+          $env:PATH = "$env:USERPROFILE\scoop\shims;$env:PATH"
+          $manifest = (Resolve-Path .download/beforedone.json).Path
+          scoop install $manifest
+          if ($LASTEXITCODE -ne 0) { throw 'candidate Scoop manifest failed to install' }
+          $reported = (& beforedone version).Trim()
+          if ($reported -ne "beforedone $($env:TAG.TrimStart('v'))") {
+            throw "candidate Scoop manifest reported unexpected version: $reported"
+          }
+          scoop uninstall beforedone
+
+      - name: Stage the tested manifest
+        shell: pwsh
+        run: |
+          Copy-Item .download/beforedone.json beforedone.json
+
+      - name: Commit changed manifest
+        shell: pwsh
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          git add beforedone.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Output "Manifest already matches $env:TAG"
+            exit 0
+          }
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "Update BeforeDone to $env:TAG"
+          if ($LASTEXITCODE -ne 0) { throw 'manifest commit failed' }
+          git push
+          if ($LASTEXITCODE -ne 0) { throw 'manifest push failed' }
