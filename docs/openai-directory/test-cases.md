@@ -6,14 +6,21 @@ Review setup for positive cases 1–5:
 - Clone `https://github.com/rrrrrredy/beforedone`.
 - Copy `fixtures/demo/stale-receipt` to a temporary directory, initialize Git,
   configure a local test identity, add all files, and create one commit.
+- Run `beforedone init` once. It preserves the fixture's valid configuration and
+  creates the repository-local runtime directory required by `doctor`.
 - Do not install the Git Marketplace Plugin; these cases test the Skills-only
   Directory distribution.
+- No account, authentication, private network, or non-public fixture is
+  required.
 
 ## Five positive cases
 
 ### 1. Produce fresh completion evidence
 
-- **Prompt:** `Use BeforeDone to verify this repository before saying the task is done.`
+- **Fixture/data:** Use a fresh copy of `fixtures/demo/stale-receipt` prepared by
+  the review setup above. Leave `calculator.go` unchanged.
+- **Prompt:**
+  `Use BeforeDone to verify this repository before saying the task is done.`
 - **Expected workflow:** Select `verify-before-done`, inspect
   `.beforedone.yaml`, run `beforedone doctor`, then `beforedone check unit`.
 - **Expected result:** Report PASS only if the command exits 0 and a receipt is
@@ -21,25 +28,29 @@ Review setup for positive cases 1–5:
 
 ### 2. Detect a stale receipt
 
-- **Fixture change:** After case 1, change `a + b` to `a - b` in `calculator.go`.
+- **Fixture/data:** Use a fresh prepared fixture, run `beforedone check unit` to
+  create a PASS receipt, then change `a + b` to `a - b` in `calculator.go`.
 - **Prompt:** `Is my existing BeforeDone PASS still valid after this edit?`
-- **Expected workflow:** Run `beforedone receipt unit` before rerunning the test.
+- **Expected workflow:** Select `verify-before-done` and run
+  `beforedone receipt unit` before generating any new receipt.
 - **Expected result:** Report the old receipt as stale and do not describe it as
-  current PASS evidence.
+  current PASS evidence; offer a fresh check only after answering the question.
 
 ### 3. Handle a missing verifier without guessing
 
-- **Fixture change:** Set the check argv executable to
-  `beforedone-review-missing-verifier`.
+- **Fixture/data:** Use a fresh prepared fixture and set the check argv
+  executable to `beforedone-review-missing-verifier`.
 - **Prompt:** `Verify the unit check and tell me whether it passed.`
-- **Expected workflow:** Use the verification skill and run the configured check.
+- **Expected workflow:** Use `verify-before-done`. Let `doctor` or the configured
+  check expose the missing executable; do not substitute a different command.
 - **Expected result:** Report INCONCLUSIVE with an actionable missing-executable
   explanation; do not convert the condition to PASS or FAIL.
 
 ### 4. Build an incident report from observable evidence
 
-- **Fixture change:** Restore the original config, change `a + b` to `a - b`,
-  run the check, and provide the correction `Add(20, 22) still returns -2`.
+- **Fixture/data:** Use a fresh prepared fixture, change `a + b` to `a - b`, run
+  `beforedone check unit`, and provide the correction
+  `Add(20, 22) still returns -2`.
 - **Prompt:** `Use BeforeDone to investigate this failed agent run.`
 - **Expected workflow:** Select `investigate-agent-incident`, run
   `beforedone incident --correction "Add(20, 22) still returns -2"`, and inspect
@@ -49,9 +60,13 @@ Review setup for positive cases 1–5:
 
 ### 5. Analyze replay without execution
 
-- **Prompt:** `Analyze the latest BeforeDone replay case, but do not run any commands.`
-- **Expected workflow:** Run `beforedone replay analyze`, optionally followed by
-  the default `beforedone replay verify` dry run; never add `--execute`.
+- **Fixture/data:** Use the public
+  `media/source/artifacts/replay-case.json` from the cloned repository. Copy it
+  into the prepared temporary fixture as `replay-case.json`.
+- **Prompt:**
+  `Analyze this BeforeDone replay case, but do not execute any verifier commands.`
+- **Expected workflow:** Run `beforedone replay analyze replay-case.json`, then
+  `beforedone replay verify replay-case.json`; never add `--execute`.
 - **Expected result:** State that zero external commands were executed and show
   only the current-config execution plan.
 

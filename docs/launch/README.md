@@ -40,8 +40,15 @@ Do not create empty placeholders for these files. Missing means missing.
       Actions release mode and is not claimed for this manual release.
 - [ ] CLI installs and runs from public artifacts on clean Windows, macOS, and
       Linux hosts.
-- [ ] Plugin installs from the public Git marketplace in a clean Codex setup.
-- [ ] Both standalone skills install from the public repository and skills.sh.
+- [x] Plugin installs and enables from the public Git marketplace in an
+      isolated clean Codex setup; cached plugin files match the source.
+- [x] Both standalone skills install with the official Codex skill installer
+      from the public `v1.0.0` tag; installed files match the tagged Git blobs.
+- [x] Both public skills.sh discovery pages resolve anonymously. This is a
+      discovery check, not a claim that the third-party `npx skills` client ran.
+- [x] The exact public Skills-only ZIP installs and enables in a fresh isolated
+      Codex home. Codex discovers both namespaced Skills, with zero Hook, MCP,
+      or App components.
 - [ ] The Skills-only package passes OpenAI review and is published in the
       Public Plugins Directory; its listing does not claim automatic Stop.
 - [x] Website works anonymously at `/beforedone/` on desktop and mobile; the
@@ -65,8 +72,10 @@ Use [demo-runbook.md](demo-runbook.md), [media-checklist.md](media-checklist.md)
 - Exercise the public Linux and macOS archives on native or trusted clean hosts;
   the public Windows amd64 archive has already passed download, hash, version,
   and fixture checks.
-- Install the public Git Marketplace Plugin and both standalone Skills in clean
-  Codex environments, then verify the external `skills.sh` route.
+- Preserve the isolated Git Marketplace Plugin and official standalone Skills
+  installation evidence; both public installation routes now pass. The
+  external skills.sh discovery pages and the exact Skills-only ZIP load test
+  also pass.
 - Complete identity verification and third-party review for the Skills-only
   OpenAI Public Plugins Directory package.
 

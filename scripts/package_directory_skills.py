@@ -9,6 +9,7 @@ import json
 import re
 import sys
 import zipfile
+import zlib
 from pathlib import Path, PurePosixPath
 
 
@@ -19,6 +20,7 @@ SEMVER = re.compile(
 )
 SKILLS = ("investigate-agent-incident", "verify-before-done")
 FIXED_ZIP_TIME = (1980, 1, 1, 0, 0, 0)
+REGULAR_FILE_MODE = 0o100644
 TEXT_SUFFIXES = {".json", ".md", ".txt", ".yaml", ".yml"}
 
 
@@ -132,10 +134,17 @@ def skill_files(root: Path) -> list[tuple[str, bytes]]:
     return result
 
 
+def checked_skill_files(root: Path) -> list[tuple[str, bytes]]:
+    try:
+        return skill_files(root)
+    except (OSError, UnicodeError) as exc:
+        fail(f"cannot read Directory source tree under {root}: {exc}")
+
+
 def zip_info(name: str) -> zipfile.ZipInfo:
     info = zipfile.ZipInfo(name, FIXED_ZIP_TIME)
     info.create_system = 3
-    info.external_attr = 0o100644 << 16
+    info.external_attr = REGULAR_FILE_MODE << 16
     info.compress_type = zipfile.ZIP_DEFLATED
     return info
 
@@ -150,7 +159,7 @@ def build(root: Path, version: str, output_dir: Path) -> tuple[Path, Path]:
 
     entries = [
         (".codex-plugin/plugin.json", manifest_text.encode("utf-8")),
-        *skill_files(root),
+        *checked_skill_files(root),
     ]
     names = [name for name, _data in entries]
     if names != sorted(names):
@@ -168,18 +177,27 @@ def build(root: Path, version: str, output_dir: Path) -> tuple[Path, Path]:
         for name, data in entries:
             handle.writestr(zip_info(name), data, compresslevel=9)
 
-    verify_archive(archive, version)
+    verify_archive(archive, version, root)
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     checksum = archive.with_suffix(archive.suffix + ".sha256")
     checksum.write_text(f"{digest}  {archive.name}\n", encoding="ascii", newline="\n")
     return archive, checksum
 
 
-def verify_archive(path: Path, version: str) -> None:
+def verify_archive(path: Path, version: str, root: Path) -> None:
     expected_manifest = directory_manifest(version)
-    expected_prefixes = {f"skills/{skill}/" for skill in SKILLS}
+    expected_manifest_bytes = (
+        json.dumps(expected_manifest, indent=2, ensure_ascii=False) + "\n"
+    ).encode("utf-8")
+    source_entries = dict(checked_skill_files(root))
+    expected_entries = {
+        ".codex-plugin/plugin.json": expected_manifest_bytes,
+        **source_entries,
+    }
     try:
         with zipfile.ZipFile(path) as handle:
+            if handle.comment:
+                fail(f"{path}: archive comments are not allowed")
             infos = handle.infolist()
             names = [info.filename for info in infos]
             if len(names) != len(set(names)):
@@ -192,25 +210,46 @@ def verify_archive(path: Path, version: str) -> None:
                     fail(f"{path}: unsafe ZIP entry {info.filename!r}")
                 if info.date_time != FIXED_ZIP_TIME:
                     fail(f"{path}: non-reproducible timestamp on {info.filename}")
+                if (
+                    info.create_system != 3
+                    or info.external_attr != (REGULAR_FILE_MODE << 16)
+                ):
+                    fail(f"{path}: non-regular or non-reproducible mode on {info.filename}")
+                if info.compress_type != zipfile.ZIP_DEFLATED:
+                    fail(f"{path}: unexpected compression method on {info.filename}")
+                if info.extra or info.comment or info.flag_bits != 0:
+                    fail(f"{path}: unexpected ZIP metadata on {info.filename}")
                 if any(part in {"hooks", "scripts"} for part in name.parts):
                     fail(f"{path}: forbidden lifecycle or script entry {info.filename}")
                 if name.name in {".mcp.json", ".app.json"}:
                     fail(f"{path}: forbidden MCP/app entry {info.filename}")
-            if ".codex-plugin/plugin.json" not in names:
-                fail(f"{path}: missing .codex-plugin/plugin.json")
-            for prefix in expected_prefixes:
-                if not any(name.startswith(prefix) for name in names):
-                    fail(f"{path}: missing skill tree {prefix}")
-            unexpected = [
-                name
-                for name in names
-                if name != ".codex-plugin/plugin.json"
-                and not any(name.startswith(prefix) for prefix in expected_prefixes)
-            ]
-            if unexpected:
-                fail(f"{path}: unexpected files outside the skills-only layout: {unexpected}")
+            expected_names = sorted(expected_entries)
+            if names != expected_names:
+                missing = sorted(set(expected_names) - set(names))
+                unexpected = sorted(set(names) - set(expected_names))
+                fail(
+                    f"{path}: ZIP file tree differs from the source tree "
+                    f"(missing={missing}, unexpected={unexpected})"
+                )
+            info_by_name = {info.filename: info for info in infos}
+            for name, expected_data in expected_entries.items():
+                if info_by_name[name].file_size != len(expected_data):
+                    fail(f"{path}: packaged size differs from source: {name}")
+                if handle.read(name) != expected_data:
+                    fail(f"{path}: packaged content differs from source: {name}")
             manifest = json.loads(handle.read(".codex-plugin/plugin.json"))
-    except (OSError, zipfile.BadZipFile, KeyError, json.JSONDecodeError) as exc:
+    except (
+        OSError,
+        EOFError,
+        RuntimeError,
+        NotImplementedError,
+        UnicodeError,
+        zipfile.BadZipFile,
+        zipfile.LargeZipFile,
+        zlib.error,
+        KeyError,
+        json.JSONDecodeError,
+    ) as exc:
         fail(f"{path}: invalid Directory ZIP: {exc}")
     if manifest != expected_manifest:
         fail(f"{path}: generated Directory manifest does not match the versioned contract")
@@ -239,7 +278,7 @@ def main() -> int:
                 f"{full_version!r}"
             )
         if args.verify:
-            verify_archive(args.verify, version)
+            verify_archive(args.verify, version, root)
             print(f"validated skills-only Directory bundle: {args.verify}")
         else:
             output_dir = args.output_dir or root / "dist" / "directory"
