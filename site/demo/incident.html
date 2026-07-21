@@ -5,7 +5,7 @@
 <title>BeforeDone Incident incident-20260720T025339.989Z-11cd3e7ca1566ed4</title>
 <style>
 :root{color-scheme:dark;background:#0b0c10;color:#f4f1e8;font:16px/1.55 ui-sans-serif,system-ui,sans-serif}body{max-width:1100px;margin:auto;padding:48px 24px}h1,h2{letter-spacing:-.03em}.hero{border:1px solid #34383f;border-radius:22px;padding:30px;background:#12141a}.verdict{display:inline-block;padding:5px 11px;border-radius:99px;background:#e6ff65;color:#10120d;font-weight:800}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}.card{border:1px solid #34383f;border-radius:16px;padding:18px;background:#151820}code,pre{font-family:ui-monospace,monospace}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#090a0d;padding:16px;border-radius:12px}.muted{color:#aeb4bd}table{width:100%;border-collapse:collapse}th,td{text-align:left;border-bottom:1px solid #34383f;padding:10px;vertical-align:top}
-</style></head><body>
+</style></head><body><main>
 <section class="hero"><p class="verdict">FAIL</p><h1>BeforeDone Incident Report</h1><p class="muted">incident-20260720T025339.989Z-11cd3e7ca1566ed4 · 2026-07-20 02:53:39.9895213 &#43;0000 UTC</p><p>This report reconstructs observable evidence. It does not claim access to hidden chain-of-thought.</p></section>
 <h2>First Observable Divergence</h2><section class="card"><strong>exact_event</strong><p>This event is explicitly associated with a verified failing BeforeDone receipt.</p><code>verified-failing-check-event</code></section>
 <h2>Claim / Evidence Matrix</h2><table><thead><tr><th>Claim</th><th>Evidence</th><th>Status</th></tr></thead><tbody><tr><td>test passed</td><td><code>receipt-20260720T025337.465Z-18e4d6529aa49ab6</code></td><td>CONTRADICTED</td></tr></tbody></table>
@@ -19,4 +19,4 @@ Uncommitted changes:
 calculator.go | 2 &#43;-
  1 file changed, 1 insertion(&#43;), 1 deletion(-)</pre>
 <h2>Next steps</h2><ol><li>Fix the first failing check, then run it again through `beforedone check &lt;id&gt;`.</li><li>Run `beforedone replay analyze` to reproduce this evidence-only classification.</li></ol>
-</body></html>
+</main></body></html>

@@ -467,7 +467,7 @@ var reportTemplate = template.Must(template.New("incident").Parse(`<!doctype htm
 <title>BeforeDone Incident {{.ID}}</title>
 <style>
 :root{color-scheme:dark;background:#0b0c10;color:#f4f1e8;font:16px/1.55 ui-sans-serif,system-ui,sans-serif}body{max-width:1100px;margin:auto;padding:48px 24px}h1,h2{letter-spacing:-.03em}.hero{border:1px solid #34383f;border-radius:22px;padding:30px;background:#12141a}.verdict{display:inline-block;padding:5px 11px;border-radius:99px;background:#e6ff65;color:#10120d;font-weight:800}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}.card{border:1px solid #34383f;border-radius:16px;padding:18px;background:#151820}code,pre{font-family:ui-monospace,monospace}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#090a0d;padding:16px;border-radius:12px}.muted{color:#aeb4bd}table{width:100%;border-collapse:collapse}th,td{text-align:left;border-bottom:1px solid #34383f;padding:10px;vertical-align:top}
-</style></head><body>
+</style></head><body><main>
 <section class="hero"><p class="verdict">{{.Verdict}}</p><h1>BeforeDone Incident Report</h1><p class="muted">{{.ID}} · {{.CreatedAt}}</p><p>This report reconstructs observable evidence. It does not claim access to hidden chain-of-thought.</p></section>
 <h2>First Observable Divergence</h2><section class="card"><strong>{{.FirstObservableDivergence.Precision}}</strong><p>{{.FirstObservableDivergence.Reason}}</p>{{if .FirstObservableDivergence.EventID}}<code>{{.FirstObservableDivergence.EventID}}</code>{{end}}{{if .FirstObservableDivergence.StartEvent}}<code>{{.FirstObservableDivergence.StartEvent}} → {{.FirstObservableDivergence.EndEvent}}</code>{{end}}</section>
 <h2>Claim / Evidence Matrix</h2><table><thead><tr><th>Claim</th><th>Evidence</th><th>Status</th></tr></thead><tbody>{{range .Evidence}}<tr><td>{{.Claim}}</td><td><code>{{.Evidence}}</code></td><td>{{.Status}}</td></tr>{{end}}</tbody></table>
@@ -477,7 +477,7 @@ var reportTemplate = template.Must(template.New("incident").Parse(`<!doctype htm
 {{if .Transcript}}<h2>Optional transcript supplement</h2><section class="card"><p>{{.Transcript.Statement}}</p><p class="muted"><code>{{.Transcript.SHA256}}</code>{{if .Transcript.Truncated}} · excerpt truncated{{end}}</p><pre>{{.Transcript.Excerpt}}</pre></section>{{end}}
 {{if .DiffSummary}}<h2>Git diff summary</h2><pre>{{.DiffSummary}}</pre>{{end}}
 <h2>Next steps</h2><ol>{{range .NextSteps}}<li>{{.}}</li>{{end}}</ol>
-</body></html>`))
+</main></body></html>`))
 
 var _ = errors.New
 var _ = fmt.Sprintf

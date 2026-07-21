@@ -177,6 +177,9 @@ func TestHTMLReportEscapesUntrustedContentAndHasStrictCSP(t *testing.T) {
 			t.Fatalf("CSP is missing %q", directive)
 		}
 	}
+	if strings.Count(lower, "<main>") != 1 || strings.Count(lower, "</main>") != 1 {
+		t.Fatal("incident report must expose exactly one main landmark")
+	}
 	if strings.Contains(lower, "http://") || strings.Contains(lower, "https://") {
 		t.Fatal("self-contained incident report references a network resource")
 	}

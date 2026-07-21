@@ -63,3 +63,10 @@ func TestSensitiveLabelRecognizesCredentialFields(t *testing.T) {
 		t.Fatal("ordinary attribute was classified as sensitive")
 	}
 }
+
+func TestRedactionPreservesWindowsDiagnosticPaths(t *testing.T) {
+	value := `open D:\Codex\_tmp\go-build123\b001\beforedone-demo.test.exe and C:\new\folder: Access is denied`
+	if got := Apply(value, nil); got != value {
+		t.Fatalf("Windows path changed during redaction:\n got: %q\nwant: %q", got, value)
+	}
+}

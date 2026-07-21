@@ -14,6 +14,7 @@ __pycache__/
 # Site and QA scratch
 site/.qa/
 tmp/
+media/source/raw-clips/
 
 # OS/editor
 .DS_Store

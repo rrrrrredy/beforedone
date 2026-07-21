@@ -49,7 +49,7 @@ func Apply(value string, configured []*regexp.Regexp) string {
 // first, an input such as "pass\x00word=secret" could become a visible
 // credential assignment only after it had already bypassed the matcher.
 func normalizeControls(value string) string {
-	value = strings.Map(func(r rune) rune {
+	return strings.Map(func(r rune) rune {
 		if r == '\t' || r == '\r' || r == '\n' {
 			return r
 		}
@@ -58,27 +58,6 @@ func normalizeControls(value string) string {
 		}
 		return r
 	}, value)
-	var output strings.Builder
-	output.Grow(len(value))
-	for i := 0; i < len(value); {
-		if value[i] == '\\' {
-			end := i
-			for end < len(value) && value[end] == '\\' {
-				end++
-			}
-			if decoded, width, ok := decodeUnicodeRune(value[end:]); ok && (unicode.IsControl(decoded) || unicode.In(decoded, unicode.Cf)) {
-				i = end + width
-				continue
-			}
-			if end < len(value) && strings.ContainsRune("tnrbf", rune(value[end])) {
-				i = end + 1
-				continue
-			}
-		}
-		output.WriteByte(value[i])
-		i++
-	}
-	return output.String()
 }
 
 // BestEffort is for artifact paths whose configuration has already passed
@@ -189,6 +168,12 @@ func findSensitiveKeyMatches(value string) [][2]int {
 				i += width
 				continue
 			}
+			if normalized.Len() > 0 {
+				if width, ok := escapedControlWidth(value[i:]); ok && identifierStarts(value[i+width:]) {
+					i += width
+					continue
+				}
+			}
 			if value[i] != ' ' {
 				r, width := rune(value[i]), 1
 				if value[i] >= 0x80 {
@@ -230,6 +215,10 @@ func normalizeIdentifier(value string) string {
 		}
 		if decoded, width, ok := decodeUnicodeEscape(value[i:]); ok {
 			normalized.WriteByte(toLowerASCII(decoded))
+			i += width
+			continue
+		}
+		if width, ok := escapedControlWidth(value[i:]); ok {
 			i += width
 			continue
 		}
@@ -282,6 +271,37 @@ func decodeUnicodeRune(value string) (rune, int, bool) {
 		decoded = (decoded << 4) | digit
 	}
 	return rune(decoded), 5, true
+}
+
+func escapedControlWidth(value string) (int, bool) {
+	if len(value) < 2 || value[0] != '\\' {
+		return 0, false
+	}
+	end := 0
+	for end < len(value) && value[end] == '\\' {
+		end++
+	}
+	if end >= len(value) {
+		return 0, false
+	}
+	if strings.ContainsRune("tnrbf", rune(value[end])) {
+		return end + 1, true
+	}
+	if decoded, width, ok := decodeUnicodeRune(value[end:]); ok && (unicode.IsControl(decoded) || unicode.In(decoded, unicode.Cf)) {
+		return end + width, true
+	}
+	return 0, false
+}
+
+func identifierStarts(value string) bool {
+	if len(value) == 0 {
+		return false
+	}
+	if isIdentifierByte(value[0]) {
+		return true
+	}
+	_, _, ok := decodeUnicodeEscape(value)
+	return ok
 }
 
 func hexDigit(value byte) (int, bool) {
