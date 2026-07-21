@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy — BeforeDone</title>
+  <meta name="description" content="BeforeDone privacy information.">
+  <meta name="theme-color" content="#0b0b0c">
+  <link rel="canonical" href="https://rrrrrredy.github.io/beforedone/privacy.html">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='12'%20fill='%230b0b0c'/%3E%3Cpath%20d='M42%208L22%2056'%20stroke='%23e54836'%20stroke-width='9'%20stroke-linecap='square'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header" data-theme="dark">
+    <a class="brand" href="./" aria-label="BeforeDone home">BeforeDone<span class="brand-mark" aria-hidden="true">/</span></a>
+    <nav aria-label="Primary navigation">
+      <a href="./#product">Product</a>
+      <a href="./#install">Install</a>
+      <a href="https://github.com/rrrrrredy/beforedone" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main id="main" class="legal-page">
+    <article>
+      <h1>Privacy</h1>
+      <p><strong>Effective July 17, 2026.</strong> BeforeDone is a local, open-source developer tool. It does not require an account and the BeforeDone project does not operate a data collection service.</p>
+
+      <h2>What BeforeDone stores</h2>
+      <p>The CLI stores its local receipt key, evidence receipts, command logs, a normalized event ledger, replay cases, and incident reports under <code>.git/beforedone</code> in your local repository. It may read Git state and files matched by the relevant-file patterns in <code>.beforedone.yaml</code>.</p>
+
+      <h2>Event summaries and redaction</h2>
+      <p>Codex lifecycle payloads and normalized Adapter imports are redacted and normalized into bounded event summaries before persistence; BeforeDone does not require a raw transcript. An optional transcript is unstable narrative context, never a trust source or an input to First Observable Divergence. BeforeDone accepts at most 4 MiB, applies redaction, and persists only a bounded 16 KiB excerpt plus its SHA-256 digest and a truncation flag—not the raw transcript.</p>
+      <p>Built-in secret patterns, your configured <code>capture.redact_patterns</code>, and output size limits are applied before supported check output, event summaries, replay output, user corrections, and the optional transcript excerpt are persisted. Redaction is best effort and cannot guarantee removal of every secret or personal detail.</p>
+      <p>Evidence receipts intentionally preserve the verifier's actual command arguments and working-directory metadata so reviewers can see what ran. Output redaction does not rewrite those structural fields. Do not place credentials in command-line arguments; prefer environment-based or native credential mechanisms, avoid sensitive path names, and review metadata before sharing artifacts.</p>
+
+      <h2>Retention and deletion</h2>
+      <p><code>reports.retain</code> prunes older incident directories when a new incident is created. In v1 it does not automatically prune receipts, command logs, or the event ledger. To erase all local evidence, first remove the selected Codex integration, then review and manually remove <code>.git/beforedone</code>. Remove <code>.beforedone.yaml</code> separately only if the repository should no longer define checks.</p>
+
+      <h2>What BeforeDone sends</h2>
+      <p>BeforeDone v1 has no telemetry, advertising, analytics SDK, cloud account, or hosted API. The CLI, Plugin, and Skills do not send project evidence to the BeforeDone maintainers. Checks and explicit replay execution can still access the network if the configured command does so; a detached worktree is not network isolation.</p>
+
+      <h2>Local storage is not an attacker boundary</h2>
+      <p>A malicious process running as the same operating-system user with repository write access can read or replace the local receipt key, edit configuration, and rewrite runtime artifacts. It can manufacture a self-consistent PASS. BeforeDone is designed for non-adversarial early completion and stale evidence, not for proving claims against a hostile same-user Agent.</p>
+
+      <h2>Reports and sharing</h2>
+      <p>Incident reports and replay cases are local artifacts until you choose to share them. Redaction reduces accidental disclosure but cannot guarantee that every secret or personal detail has been removed. Review artifacts before publishing or attaching them to an issue.</p>
+
+      <h2>Optional third-party installers</h2>
+      <p>The no-telemetry statement covers BeforeDone. Optional tools such as <code>skills.sh</code> are separate projects and may collect their own usage data. Consult their policies or set <code>DISABLE_TELEMETRY=1</code> when using that installer.</p>
+
+      <h2>This website</h2>
+      <p>This static site uses no cookies and no third-party analytics. It is hosted by GitHub Pages, so GitHub may process request information under its own privacy terms. Links to GitHub, YouTube, Product Hunt, or other sites are governed by those services.</p>
+
+      <h2>Questions or security reports</h2>
+      <p>Use the contact method in the repository's <a href="https://github.com/rrrrrredy/beforedone/blob/main/SECURITY.md">security policy</a>. Please do not include sensitive repository data in a public issue.</p>
+    </article>
+  </main>
+  <footer class="site-footer">
+    <p>BeforeDone is open source under Apache-2.0.</p>
+    <div><a href="./">Home</a><a href="./terms.html">Terms</a><span>© <span data-year>2026</span> BeforeDone contributors</span></div>
+  </footer>
+</body>
+</html>

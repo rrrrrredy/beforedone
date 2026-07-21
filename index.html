@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BeforeDone — Make coding agents prove they're done</title>
+  <meta name="description" content="BeforeDone is an open-source evidence gate and incident replay toolkit for Codex. Fresh evidence before completion; a replayable incident report when things go wrong.">
+  <meta name="theme-color" content="#0b0b0c">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="BeforeDone — Make coding agents prove they're done">
+  <meta property="og:description" content="Fresh evidence before completion. A replayable incident report when things go wrong.">
+  <meta property="og:url" content="https://rrrrrredy.github.io/beforedone/">
+  <meta property="og:image" content="https://rrrrrredy.github.io/beforedone/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://rrrrrredy.github.io/beforedone/">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='12'%20fill='%230b0b0c'/%3E%3Cpath%20d='M42%208L22%2056'%20stroke='%23e54836'%20stroke-width='9'%20stroke-linecap='square'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header" data-theme="dark">
+    <a class="brand" href="./" aria-label="BeforeDone home">BeforeDone<span class="brand-mark" aria-hidden="true">/</span></a>
+    <nav aria-label="Primary navigation">
+      <a href="#product">Product</a>
+      <a href="#install">Install</a>
+      <a href="./guide.html">Guide</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/rrrrrredy/beforedone" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero section-dark" id="product">
+      <div class="hero-copy">
+        <h1>Make coding agents prove they're done.</h1>
+        <p>Fresh evidence before completion. A replayable incident report when things go wrong.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#install">Install BeforeDone</a>
+          <a class="button button-ghost" href="https://github.com/rrrrrredy/beforedone" rel="noreferrer">View on GitHub</a>
+        </div>
+      </div>
+
+      <div class="terminal" aria-label="Interactive evidence receipt demonstration">
+        <div class="terminal-titlebar">
+          <span class="terminal-dot"></span>
+          <span>illustrative receipt · real v1 schema</span>
+          <button class="state-toggle" type="button" data-receipt-toggle aria-pressed="false">Show stale state</button>
+        </div>
+        <div class="terminal-command"><span>$</span> <b>beforedone</b> check test</div>
+
+        <div class="receipt receipt-pass" data-receipt="pass">
+          <p class="verdict verdict-pass"><span aria-hidden="true">✓</span> PASS <span>Evidence receipt is current</span></p>
+          <dl>
+            <div><dt>check_id</dt><dd>test</dd></div>
+            <div><dt>argv</dt><dd>["go", "test", "./..."]</dd></div>
+            <div><dt>exit_code</dt><dd>0</dd></div>
+            <div><dt>fingerprint</dt><dd>sha256:7f3c2e9a…d6f8e</dd></div>
+            <div><dt>verdict</dt><dd>PASS</dd></div>
+          </dl>
+          <p class="receipt-note">Bound to the configured relevant files, verifier argv, and current contents.</p>
+        </div>
+
+        <div class="receipt receipt-stale" data-receipt="stale" hidden>
+          <p class="verdict verdict-stale"><span aria-hidden="true">×</span> STALE <span>Fingerprint mismatch</span></p>
+          <dl>
+            <div><dt>recorded</dt><dd>sha256:7f3c2e9a…d6f8e</dd></div>
+            <div><dt>current</dt><dd>sha256:3b8d4f1c…e7d10</dd></div>
+            <div><dt>verdict</dt><dd>INCONCLUSIVE</dd></div>
+            <div><dt>next</dt><dd>Run beforedone check test</dd></div>
+          </dl>
+          <p class="receipt-note receipt-note-red">The old PASS no longer supports completion.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="proof-sequence section-paper" aria-labelledby="proof-heading">
+      <div class="section-intro">
+        <h2 id="proof-heading">No fresh evidence.<br>No credible done.</h2>
+        <p>BeforeDone evaluates explicit verifier results against the files they cover. It asks Codex for one corrective continuation when the proof is missing, failed, or stale.</p>
+      </div>
+
+      <ol class="gate-steps">
+        <li>
+          <span class="step-number">01</span>
+          <h3>Agent says done</h3>
+          <p>A completion claim reaches the Stop Hook.</p>
+        </li>
+        <li>
+          <span class="step-number">02</span>
+          <h3>Receipts checked</h3>
+          <p>Required checks are matched to the current relevant-file fingerprint.</p>
+        </li>
+        <li class="step-alert">
+          <span class="step-number">03</span>
+          <h3>Missing or stale</h3>
+          <p>Codex receives exactly one continuation with the checks it must run.</p>
+          <span class="stamp stamp-red">ONE CONTINUATION</span>
+        </li>
+        <li>
+          <span class="step-number">04</span>
+          <h3>Fresh check passes</h3>
+          <p>The new receipt covers the actual current files.</p>
+          <span class="stamp stamp-green">PASS</span>
+        </li>
+        <li>
+          <span class="step-number">05</span>
+          <h3>Completion allowed</h3>
+          <p>The final claim now has inspectable support.</p>
+        </li>
+      </ol>
+
+      <div class="receipt-anatomy">
+        <div>
+          <h3>Evidence receipt anatomy</h3>
+          <p>A receipt records what actually ran, its exit status, and exactly which configured files it covered.</p>
+        </div>
+        <pre aria-label="Evidence receipt JSON example"><code>{
+  "schema_version": 1,
+  "check_id": "test",
+  "argv": ["go", "test", "./..."],
+  "exit_code": 0,
+  "relevant_files_fingerprint": "sha256:7f3c…d6f8e",
+  "verdict": "PASS"
+}</code></pre>
+      </div>
+    </section>
+
+    <section class="incident section-dark" id="incident" aria-labelledby="incident-heading">
+      <div class="incident-heading">
+        <div>
+          <h2 id="incident-heading">Find the first observable divergence.</h2>
+          <p>Timeline, diff, receipts, logs, and corrections — without pretending to recover hidden reasoning.</p>
+        </div>
+        <a class="text-link" href="./demo/incident.html">Open the example report <span aria-hidden="true">↗</span></a>
+      </div>
+
+      <div class="report-shell">
+        <div class="report-toolbar">
+          <span>illustrative report view · open the real report above</span>
+          <span>local HTML</span>
+        </div>
+        <div class="report-layout">
+          <ol class="timeline" aria-label="Incident event timeline">
+            <li>
+              <span class="event-index">001</span>
+              <time>10:22:31.214Z</time>
+              <div><b>ToolStarted</b><small>go test ./...</small></div>
+            </li>
+            <li class="divergence">
+              <span class="event-index">002</span>
+              <time>10:22:32.276Z</time>
+              <div><b>ToolFinished</b><small>exit: 1 · parser edge case failed</small><strong>FIRST OBSERVABLE DIVERGENCE</strong></div>
+            </li>
+            <li>
+              <span class="event-index">003</span>
+              <time>10:22:33.001Z</time>
+              <div><b>AgentStopping</b><small>missing fresh test receipt</small></div>
+            </li>
+            <li class="correction">
+              <span class="event-index">004</span>
+              <time>10:24:02.884Z</time>
+              <div><b>User correction</b><small>handle escaped delimiters</small></div>
+            </li>
+          </ol>
+
+          <div class="event-detail">
+            <p class="detail-label">Event 002 · ToolFinished</p>
+            <dl>
+              <div><dt>command</dt><dd>go test ./...</dd></div>
+              <div><dt>exit</dt><dd>1</dd></div>
+              <div><dt>stderr</dt><dd>expected escaped delimiter to remain literal</dd></div>
+              <div><dt>evidence</dt><dd>log sha256: e3b1…6f9a</dd></div>
+            </dl>
+          </div>
+
+          <aside class="evidence-matrix">
+            <h3>Claim / Evidence</h3>
+            <ul>
+              <li><span>Tests ran</span><b class="supported">Supported</b></li>
+              <li><span>Tests passed</span><b class="unsupported">Contradicted</b></li>
+              <li><span>Implementation was correct</span><b class="unknown">Not observable</b></li>
+            </ul>
+            <p>Precision</p>
+            <strong class="precision">exact_event</strong>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="install section-paper" id="install" aria-labelledby="install-heading">
+      <div class="section-intro install-intro">
+        <h2 id="install-heading">One core. Choose one Codex route.</h2>
+        <p>The CLI is the source of truth and is always required. Then choose exactly one integration: the Git Marketplace Plugin for hooks plus both bundled skills, the standalone Skills Pack for a manual workflow, or project-local hooks from <code>beforedone setup codex</code>. The <a href="https://learn.chatgpt.com/docs/submit-plugins">OpenAI Public Plugins Directory</a> package is Skills-only and belongs to the manual route; it cannot enforce Stop. Combining routes duplicates hooks or workflows.</p>
+      </div>
+
+      <div class="install-switcher" data-tabs>
+        <div class="tab-list" role="tablist" aria-label="Installation method">
+          <button role="tab" id="tab-cli" aria-controls="panel-cli" aria-selected="true" tabindex="0" data-tab="cli"><span>01</span> CLI</button>
+          <button role="tab" id="tab-plugin" aria-controls="panel-plugin" aria-selected="false" tabindex="-1" data-tab="plugin"><span>02</span> Codex Plugin</button>
+          <button role="tab" id="tab-skills" aria-controls="panel-skills" aria-selected="false" tabindex="-1" data-tab="skills"><span>03</span> Skills Pack</button>
+        </div>
+
+        <div class="tab-panel" id="panel-cli" role="tabpanel" aria-labelledby="tab-cli" data-panel="cli">
+          <h3>Install the local evidence engine</h3>
+          <p>Works on Windows, macOS, and Linux. From the target Git repository, run <code>beforedone init</code>, review <code>.beforedone.yaml</code>, then run <code>beforedone doctor</code>.</p>
+          <div class="copy-row">
+            <code>go install github.com/rrrrrredy/beforedone/cmd/beforedone@latest</code>
+            <button type="button" data-copy="go install github.com/rrrrrredy/beforedone/cmd/beforedone@latest">Copy</button>
+          </div>
+          <a href="https://github.com/rrrrrredy/beforedone/releases/latest">Download release archives <span aria-hidden="true">↗</span></a>
+        </div>
+
+        <div class="tab-panel" id="panel-plugin" role="tabpanel" aria-labelledby="tab-plugin" data-panel="plugin" hidden>
+          <h3>Add the public Git marketplace</h3>
+          <p>This is the full automatic Plugin, not the Skills-only Public Directory package. Install the CLI first, add the marketplace below, restart the desktop app, then open the Plugins Directory, select the <code>beforedone</code> source, and install BeforeDone in the UI. Review and trust the hooks with <code>/hooks</code>, then start a new task. Do not also install the standalone pack or project hooks. Hooks never download executables silently.</p>
+          <div class="copy-row">
+            <code>codex plugin marketplace add rrrrrredy/beforedone</code>
+            <button type="button" data-copy="codex plugin marketplace add rrrrrredy/beforedone">Copy</button>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="panel-skills" role="tabpanel" aria-labelledby="tab-skills" data-panel="skills" hidden>
+          <h3>Use the manual workflows</h3>
+          <p>Choose this instead of the Git Plugin or project hooks. The standalone Skills—and the Skills-only package submitted to the OpenAI Public Plugins Directory—guide verification and incident analysis, but cannot capture lifecycle events or enforce a Stop Hook. Run both exact installer prompts, then start a new Codex turn.</p>
+          <div class="copy-row">
+            <code>$skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skills/verify-before-done</code>
+            <button type="button" data-copy="$skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skills/verify-before-done">Copy</button>
+          </div>
+          <div class="copy-row">
+            <code>$skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skills/investigate-agent-incident</code>
+            <button type="button" data-copy="$skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skills/investigate-agent-incident">Copy</button>
+          </div>
+          <p>Optional third-party installer, with its telemetry disabled:</p>
+          <div class="copy-row">
+            <code>DISABLE_TELEMETRY=1 npx skills add rrrrrredy/beforedone --skill verify-before-done --skill investigate-agent-incident --agent codex --global --yes</code>
+            <button type="button" data-copy="DISABLE_TELEMETRY=1 npx skills add rrrrrredy/beforedone --skill verify-before-done --skill investigate-agent-incident --agent codex --global --yes">Copy</button>
+          </div>
+          <a href="https://github.com/rrrrrredy/beforedone/tree/main/skills">Inspect both skills <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <div class="receipt-anatomy">
+        <div>
+          <h3>Project-local hook alternative</h3>
+          <p>Instead of the Plugin or standalone Skills, run <code>beforedone setup codex</code>, trust the project hooks with <code>/hooks</code>, and start a new task. Remove them with <code>beforedone setup codex --remove</code>.</p>
+        </div>
+        <p>For upgrades, uninstallation, data removal, and pinned versions, follow the <a href="https://github.com/rrrrrredy/beforedone#readme">complete README</a>.</p>
+      </div>
+    </section>
+
+    <section class="trust section-dark" id="faq" aria-labelledby="trust-heading">
+      <div class="trust-copy">
+        <h2 id="trust-heading">Local evidence.<br>Inspectable rules.</h2>
+        <p>BeforeDone is a local guardrail for accidental early completion and stale evidence. It is inspectable, but it is not a sandbox or an attestation boundary against a malicious process running as the same OS user.</p>
+        <ul class="trust-list">
+          <li><span>01</span>No telemetry</li>
+          <li><span>02</span>No cloud account</li>
+          <li><span>03</span>Imported replay cases never control commands</li>
+          <li><span>04</span>Apache-2.0</li>
+        </ul>
+      </div>
+
+      <div class="faq-list">
+        <h3>FAQ</h3>
+        <details open>
+          <summary>Can log text forge a PASS?</summary>
+          <p>Not through the supported check flow. A word such as “PASS” in output cannot override a non-zero exit; <code>beforedone check</code> records the process result and current fingerprint. This is not protection from a malicious same-user process that can read the key, change policy, and rewrite local evidence.</p>
+        </details>
+        <details>
+          <summary>Is a receipt tamper-proof attestation?</summary>
+          <p>No. The key, configuration, and runtime artifacts are local. A malicious process with the same user and repository write access can manufacture a self-consistent PASS. BeforeDone targets fallible Agents and stale claims; hostile Agents require an external trust boundary.</p>
+        </details>
+        <details>
+          <summary>Does the Public Plugins Directory version enforce Stop?</summary>
+          <p>No. BeforeDone's no-MCP Public Directory package is Skills-only. Use the Git Marketplace Plugin or project-local hooks for the automatic Stop Gate.</p>
+        </details>
+        <details>
+          <summary>Does replay rerun the model?</summary>
+          <p>No. Analyze mode replays BeforeDone's deterministic decisions. Verify mode can rerun configured checks in a temporary worktree only after explicit <code>--execute</code>.</p>
+        </details>
+        <details>
+          <summary>Does BeforeDone recover chain of thought?</summary>
+          <p>No. It reports only what observable evidence supports: an exact event must explicitly match a verified failing Receipt, a time window must enclose that check, and weaker evidence is marked unlocated. Generic command failures or later corrections do not become invented causality.</p>
+        </details>
+        <details>
+          <summary>Does it isolate verifier network access?</summary>
+          <p>No. Checks and explicit replay execution use the network, credentials, filesystem, and process permissions available to the current user.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="closing section-dark" aria-label="Project links">
+      <h2>Prove it before done.</h2>
+      <div class="closing-links">
+        <a href="https://rrrrrredy.github.io/beforedone/"><small>Project site</small>rrrrrredy.github.io/beforedone/</a>
+        <a href="https://github.com/rrrrrredy/beforedone"><small>GitHub repository</small>github.com/rrrrrredy/beforedone</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>BeforeDone is open source under Apache-2.0.</p>
+    <div>
+      <a href="./privacy.html">Privacy</a>
+      <a href="./terms.html">Terms</a>
+      <a href="https://github.com/rrrrrredy/beforedone/blob/main/SECURITY.md">Security</a>
+      <span>© <span data-year>2026</span> BeforeDone contributors</span>
+    </div>
+  </footer>
+</body>
+</html>

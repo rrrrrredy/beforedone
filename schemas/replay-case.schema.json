@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rrrrrredy.github.io/beforedone/schemas/replay-case.schema.json",
+  "title": "BeforeDone replay case v1",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "incident_id", "verdict", "first_observable_divergence"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "incident_id": { "type": "string", "minLength": 1 },
+    "base_commit": { "type": "string" },
+    "head_commit": { "type": "string" },
+    "verdict": { "enum": ["PASS", "FAIL", "INCONCLUSIVE"] },
+    "first_observable_divergence": {
+      "type": "object",
+      "required": ["precision", "reason"],
+      "properties": {
+        "precision": { "enum": ["exact_event", "time_window", "unlocated"] },
+        "event_id": { "type": "string", "minLength": 1 },
+        "start_event": { "type": "string", "minLength": 1 },
+        "end_event": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["precision"],
+            "properties": { "precision": { "const": "exact_event" } }
+          },
+          "then": {
+            "required": ["event_id"],
+            "not": { "anyOf": [{ "required": ["start_event"] }, { "required": ["end_event"] }] }
+          }
+        },
+        {
+          "if": {
+            "required": ["precision"],
+            "properties": { "precision": { "const": "time_window" } }
+          },
+          "then": {
+            "required": ["start_event", "end_event"],
+            "not": { "required": ["event_id"] }
+          }
+        },
+        {
+          "if": {
+            "required": ["precision"],
+            "properties": { "precision": { "const": "unlocated" } }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["event_id"] },
+                { "required": ["start_event"] },
+                { "required": ["end_event"] }
+              ]
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "event_ids": { "type": "array", "items": { "type": "string" } },
+    "observed_commands": {
+      "description": "Inert evidence only. replay verify never executes these values.",
+      "type": "array",
+      "items": { "type": "array", "items": { "type": "string" } }
+    }
+  },
+  "additionalProperties": false
+}

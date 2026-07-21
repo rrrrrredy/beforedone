@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rrrrrredy.github.io/beforedone/sitemap.xml

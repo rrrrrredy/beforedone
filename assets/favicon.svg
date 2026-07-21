@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="BeforeDone proof mark">
+  <rect width="64" height="64" rx="8" fill="#0b0b0c"/>
+  <path d="M16 17h24c7 0 12 4 12 10 0 4-2 7-6 9 5 2 8 6 8 11 0 8-6 12-15 12H16V17Zm12 9v7h11c2 0 4-1 4-4s-2-3-4-3H28Zm0 16v8h12c3 0 5-1 5-4s-2-4-5-4H28Z" fill="#f7f7f4"/>
+  <path d="m10 37 7 7 15-19" fill="none" stroke="#e54836" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/>
+</svg>

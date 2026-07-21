@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rrrrrredy.github.io/beforedone/schemas/receipt.schema.json",
+  "title": "BeforeDone evidence receipt v1",
+  "type": "object",
+  "required": [
+    "schema_version", "id", "producer", "check_id", "argv", "working_directory",
+    "started_at", "finished_at", "exit_code", "verdict", "git_commit",
+    "relevant_fingerprint", "relevant_file_count", "log_path", "log_sha256",
+    "beforedone_version", "signature"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "producer": { "const": "beforedone.check" },
+    "check_id": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+$" },
+    "argv": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "working_directory": { "type": "string" },
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": "string", "format": "date-time" },
+    "exit_code": { "type": "integer" },
+    "verdict": { "enum": ["PASS", "FAIL", "INCONCLUSIVE"] },
+    "git_commit": { "type": "string" },
+    "relevant_fingerprint": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "relevant_file_count": { "type": "integer", "minimum": 0 },
+    "stdout_summary": { "type": "string" },
+    "stderr_summary": { "type": "string" },
+    "log_path": { "type": "string" },
+    "log_sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "beforedone_version": { "type": "string" },
+    "error": { "type": "string" },
+    "signature": { "type": "string", "pattern": "^hmac-sha256:[0-9a-f]{64}$" },
+    "fresh": { "type": "boolean" },
+    "stale_reason": { "type": "string" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["verdict"],
+        "properties": { "verdict": { "const": "PASS" } }
+      },
+      "then": {
+        "properties": {
+          "exit_code": { "const": 0 },
+          "error": { "maxLength": 0 }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["verdict"],
+        "properties": { "verdict": { "const": "FAIL" } }
+      },
+      "then": {
+        "properties": { "exit_code": { "not": { "const": 0 } } }
+      }
+    }
+  ],
+  "additionalProperties": false
+}
