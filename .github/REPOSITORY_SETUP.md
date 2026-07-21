@@ -13,21 +13,31 @@ them after `rrrrrredy/beforedone` is public.
 - Under **Pages**, select **GitHub Actions** for the workflow mode or the root
   of `gh-pages` for the no-Actions mode. Do not configure a custom domain and
   do not add a `CNAME` file.
-- Enable the dependency graph, Dependabot alerts, secret scanning, validity
-  checks, and push protection. These are free for the public repository.
-- Add a `main` ruleset requiring pull requests and the following status checks:
-  `Quality gates`, all three `Test on ...` checks, `CodeQL (Go)`, `Gitleaks
-  history scan`, and `Dependency Review` when a dependency changes.
-- Restrict tag creation matching `v*` to the maintainer.
+- Enable the dependency graph, Dependabot alerts and security updates, secret
+  scanning, and push protection. Enable secret validity checks when GitHub
+  exposes that setting for the account; record an explicit exception when the
+  API leaves it disabled.
+- In Actions mode, add a `main` ruleset requiring pull requests and the
+  following status checks: `Quality gates`, all three `Test on ...` checks,
+  `CodeQL (Go)`, `Gitleaks history scan`, and `Dependency Review` when a
+  dependency changes.
+- In no-Actions mode, do not require workflow status checks: disabled workflows
+  can never satisfy them. Use pull-request review where practical and attach the
+  checked-in local release audit to every manual release instead.
+- Where repository rulesets are available, restrict creation, update, and
+  deletion of tags matching `v*` to the maintainer. Never rewrite an already
+  published release tag merely to change its tag object type.
 - Set the About website to `https://rrrrrredy.github.io/beforedone/` and add the
   topics `codex`, `coding-agent`, `developer-tools`, `go`, and `open-source`.
 
 ## Package repositories
 
-Create public `rrrrrredy/homebrew-tap` and `rrrrrredy/scoop-bucket` repositories.
-Each needs Actions read/write permission only for its own built-in token. Copy
-the workflow templates from `packaging/` as documented there; no PAT or paid
-service is required.
+Create public `rrrrrredy/homebrew-tap` and `rrrrrredy/scoop-bucket` repositories
+only when those installation routes are ready to be supported. With Actions
+available, each can use read/write permission only for its own built-in token.
+With Actions unavailable, keep them disabled and commit the verified manifests
+from the public BeforeDone Release directly from an audited local checkout.
+Neither path requires a PAT or paid service.
 
 ## Release verification
 
@@ -43,4 +53,5 @@ gh attestation verify beforedone_1.0.0_linux_amd64.tar.gz --repo rrrrrredy/befor
 
 Manual no-Actions releases do not claim GitHub OIDC provenance; their public
 verification boundary is the tag, release asset matrix, checksums, SBOMs, and
-the documented local quality-gate record.
+the documented local quality-gate record. The v1.0.0 record is
+[`docs/launch/v1.0.0-release-evidence.md`](../docs/launch/v1.0.0-release-evidence.md).

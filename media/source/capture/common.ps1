@@ -20,7 +20,11 @@ public static class BeforeDoneConsoleWindow {
     [void][BeforeDoneConsoleWindow]::ShowWindow([BeforeDoneConsoleWindow]::GetConsoleWindow(), 3)
     Clear-Host
     Write-Host "BeforeDone / REAL POWERSHELL RUN" -ForegroundColor Cyan
-    Write-Host "Run: bd-demo-terminal-20260717" -ForegroundColor DarkGray
+    $runID = $env:BD_RUN_ID
+    if ([string]::IsNullOrWhiteSpace($runID)) {
+        $runID = "bd-demo-terminal"
+    }
+    Write-Host "Run: $runID" -ForegroundColor DarkGray
     Write-Host ""
 }
 
