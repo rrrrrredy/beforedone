@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BeforeDone Guide — Fresh evidence before done</title>
+  <meta name="description" content="Install, operate, and audit BeforeDone: the local evidence gate and incident replay toolkit for coding agents.">
+  <meta name="theme-color" content="#0b0b0c">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="BeforeDone Guide — Fresh evidence before done">
+  <meta property="og:description" content="A complete, readable guide to BeforeDone receipts, Stop Gate, incident replay, installation routes, and trust boundaries.">
+  <meta property="og:url" content="https://rrrrrredy.github.io/beforedone/guide.html">
+  <meta property="og:image" content="https://rrrrrredy.github.io/beforedone/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://rrrrrredy.github.io/beforedone/guide.html">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='12'%20fill='%230b0b0c'/%3E%3Cpath%20d='M42%208L22%2056'%20stroke='%23e54836'%20stroke-width='9'%20stroke-linecap='square'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body class="guide-body">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header" data-theme="dark">
+    <a class="brand" href="./" aria-label="BeforeDone home">BeforeDone<span class="brand-mark" aria-hidden="true">/</span></a>
+    <nav aria-label="Primary navigation">
+      <a href="./#product">Product</a>
+      <a href="./#install">Install</a>
+      <a href="./guide.html" aria-current="page">Guide</a>
+      <a href="https://github.com/rrrrrredy/beforedone" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main id="main" class="guide-main">
+    <section class="guide-hero" aria-labelledby="guide-title">
+      <div class="guide-hero-copy">
+        <h1 id="guide-title">Fresh evidence <span>before</span> done.</h1>
+        <p>BeforeDone requires current, file-bound verifier receipts before coding agents can declare completion. When proof is missing, failed, or stale, the Stop Gate asks for one corrective continuation.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#quickstart">Install CLI</a>
+          <a class="button button-ghost" href="https://github.com/rrrrrredy/beforedone">View repository</a>
+        </div>
+      </div>
+      <dl class="guide-metadata" aria-label="Project metadata">
+        <div><dt>Runtime</dt><dd>Go CLI</dd></div>
+        <div><dt>Integration</dt><dd>Codex hooks</dd></div>
+        <div><dt>Data</dt><dd>Local only</dd></div>
+        <div><dt>License</dt><dd>Apache-2.0</dd></div>
+      </dl>
+    </section>
+
+    <div class="guide-layout">
+      <aside class="guide-toc" aria-label="Guide navigation">
+        <p>On this page</p>
+        <nav>
+          <a href="#quickstart">00 Quickstart</a>
+          <a href="#stop-gate">01 Stop Gate</a>
+          <a href="#receipt">02 Evidence Receipt</a>
+          <a href="#replay">03 Incident Replay</a>
+          <a href="#install-routes">04 Install Routes</a>
+          <a href="#security">05 Security Boundary</a>
+          <a href="#commands">06 Command Reference</a>
+          <a href="#fullmd">07 Full README</a>
+        </nav>
+        <div class="guide-toc-note">
+          <p>BeforeDone is an inspectable local guardrail, not a hostile-process sandbox.</p>
+          <a href="https://github.com/rrrrrredy/beforedone">Source on GitHub <span aria-hidden="true">→</span></a>
+        </div>
+      </aside>
+
+      <article class="guide-content">
+        <section class="guide-section" id="quickstart">
+          <span class="guide-number">00</span>
+          <h2>30-Second Quickstart</h2>
+          <p>Install the local evidence engine, initialize the target Git repository, review the generated policy, and confirm the environment before adding one Codex integration route.</p>
+          <div class="guide-code-block">
+            <div class="guide-code-head"><span>Shell</span><button type="button" data-copy="go install github.com/rrrrrredy/beforedone/cmd/beforedone@latest&#10;beforedone init&#10;beforedone doctor">Copy</button></div>
+            <pre><code>go install github.com/rrrrrredy/beforedone/cmd/beforedone@latest
+beforedone init
+beforedone doctor</code></pre>
+          </div>
+          <p class="guide-callout"><strong>Then choose exactly one Codex route.</strong> The Git Marketplace Plugin, standalone Skills Pack, and project-local hooks are separate delivery forms; combining them duplicates workflows.</p>
+        </section>
+
+        <section class="guide-section" id="stop-gate">
+          <span class="guide-number">01</span>
+          <h2>How the Stop Gate Works</h2>
+          <p>The gate evaluates explicit verifier results against the current configured files. It does not infer success from prose or from the word “PASS” appearing in logs.</p>
+          <ol class="guide-flow" aria-label="Stop Gate flow">
+            <li><strong>Agent stops</strong><span>A completion claim reaches the hook.</span></li>
+            <li><strong>Receipts checked</strong><span>Required checks and fingerprints are compared.</span></li>
+            <li><strong>Missing or stale</strong><span>One corrective continuation explains what to run.</span></li>
+            <li><strong>Fresh PASS</strong><span>A new receipt matches the current files.</span></li>
+            <li><strong>Done allowed</strong><span>The claim now has inspectable support.</span></li>
+          </ol>
+        </section>
+
+        <section class="guide-section" id="receipt">
+          <span class="guide-number">02</span>
+          <h2>Evidence Receipt</h2>
+          <p>A receipt records what actually ran, its exit status, and the relevant-file fingerprint it covered. A later file change makes the old result stale.</p>
+          <div class="guide-split">
+            <div class="guide-code-block">
+              <div class="guide-code-head"><span>receipt.schema.json</span></div>
+              <pre><code>{
+  "schema_version": 1,
+  "check_id": "test",
+  "argv": ["go", "test", "./..."],
+  "exit_code": 0,
+  "relevant_files_fingerprint": "sha256:7f3c…d6f8e",
+  "verdict": "PASS"
+}</code></pre>
+            </div>
+            <dl class="guide-definitions">
+              <div><dt>Fresh</dt><dd>The configured verifier passed on the current relevant contents.</dd></div>
+              <div><dt>Stale</dt><dd>The receipt fingerprint no longer matches the current files.</dd></div>
+              <div><dt>Fail</dt><dd>The verifier ran and returned a non-zero exit status.</dd></div>
+              <div><dt>Inconclusive</dt><dd>The process could not produce trustworthy evidence.</dd></div>
+            </dl>
+          </div>
+        </section>
+
+        <section class="guide-section" id="replay">
+          <span class="guide-number">03</span>
+          <h2>Incident Replay</h2>
+          <p>BeforeDone reconstructs the first observable divergence from normalized events, receipts, diffs, logs, and user corrections. It reports exact events only when evidence supports that precision, and never claims access to hidden chain-of-thought.</p>
+          <div class="guide-command-grid">
+            <div><code>beforedone incident create</code><span>Build a local JSON and HTML incident report.</span></div>
+            <div><code>beforedone replay analyze case.json</code><span>Re-evaluate deterministic evidence without executing commands.</span></div>
+            <div><code>beforedone replay verify case.json --execute</code><span>Explicitly rerun current configured checks in a temporary worktree.</span></div>
+          </div>
+          <a class="guide-inline-link" href="./demo/incident.html">Open the example incident report <span aria-hidden="true">↗</span></a>
+        </section>
+
+        <section class="guide-section" id="install-routes">
+          <span class="guide-number">04</span>
+          <h2>Install Routes</h2>
+          <p>The CLI is always the source of truth. Add one integration depending on whether you want automatic Stop enforcement or a manual skills workflow.</p>
+          <div class="guide-table-wrap">
+            <table>
+              <thead><tr><th>Route</th><th>What it adds</th><th>Use when</th></tr></thead>
+              <tbody>
+                <tr><td>Git Marketplace Plugin</td><td>Stop hooks plus both bundled skills</td><td>You want the full automatic Codex gate.</td></tr>
+                <tr><td>Standalone Skills Pack</td><td>Manual verification and incident workflows</td><td>You cannot or do not want to install hooks.</td></tr>
+                <tr><td>Project-local hooks</td><td><code>beforedone setup codex</code></td><td>You want enforcement scoped to one repository.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="guide-section" id="security">
+          <span class="guide-number">05</span>
+          <h2>Security Boundary</h2>
+          <p>BeforeDone is designed for fallible agents, stale evidence, and accidental early completion. It is not an attestation boundary against a malicious process running as the same OS user.</p>
+          <ul class="guide-boundaries">
+            <li><strong>Local by default.</strong> No account, cloud service, or telemetry is required.</li>
+            <li><strong>Fail closed.</strong> Invalid, oversized, ambiguous, or incompatible evidence cannot become PASS.</li>
+            <li><strong>Redacted artifacts.</strong> Captured output passes through bounded semantic and configured redaction.</li>
+            <li><strong>No command import.</strong> Replay cases never control which commands are executed.</li>
+            <li><strong>Honest limit.</strong> A hostile same-user process can change policy or manufacture local state.</li>
+          </ul>
+        </section>
+
+        <section class="guide-section" id="commands">
+          <span class="guide-number">06</span>
+          <h2>Command Reference</h2>
+          <div class="guide-table-wrap">
+            <table>
+              <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>beforedone init</code></td><td>Create a reviewed starter policy for the repository.</td></tr>
+                <tr><td><code>beforedone doctor</code></td><td>Check Git, policy, runtime directories, CLI, and optional Codex hooks.</td></tr>
+                <tr><td><code>beforedone check &lt;id&gt;</code></td><td>Run one configured verifier and record a bounded receipt.</td></tr>
+                <tr><td><code>beforedone status</code></td><td>Evaluate required receipts against current relevant files.</td></tr>
+                <tr><td><code>beforedone hook codex</code></td><td>Apply the Stop Gate contract for Codex.</td></tr>
+                <tr><td><code>beforedone incident create</code></td><td>Generate an evidence-only incident report.</td></tr>
+                <tr><td><code>beforedone replay analyze</code></td><td>Analyze a replay case without executing commands.</td></tr>
+                <tr><td><code>beforedone replay verify --execute</code></td><td>Rerun current allowlisted checks in an isolated worktree.</td></tr>
+                <tr><td><code>beforedone setup codex</code></td><td>Install or remove project-local Codex hooks.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="guide-section guide-fullmd" id="fullmd">
+          <span class="guide-number">07</span>
+          <div class="guide-section-heading">
+            <div>
+              <h2>Full README</h2>
+              <p>The authoritative installation, operation, security, upgrade, and removal reference, included here for uninterrupted reading.</p>
+            </div>
+            <button class="button button-ghost" type="button" data-copy data-copy-target="#full-readme">Copy</button>
+          </div>
+          <pre class="guide-readme"><code id="full-readme" data-readme-source="./README.md">Loading the full README…</code></pre>
+          <p class="guide-readme-fallback">If the embedded document is unavailable, <a href="https://github.com/rrrrrredy/beforedone#readme">open the README on GitHub</a>.</p>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>BeforeDone is open source under Apache-2.0.</p>
+    <div>
+      <a href="./">Product</a>
+      <a href="./privacy.html">Privacy</a>
+      <a href="./terms.html">Terms</a>
+      <a href="https://github.com/rrrrrredy/beforedone/blob/main/SECURITY.md">Security</a>
+      <span>© <span data-year>2026</span> BeforeDone contributors</span>
+    </div>
+  </footer>
+</body>
+</html>

@@ -30,9 +30,12 @@ Do not create empty placeholders for these files. Missing means missing.
 
 ## Go/no-go evidence
 
-- [ ] CI, Security, dependency review, Pages, and release workflows are green.
-- [ ] `v1.0.0` release contains six archives, checksums, six SPDX SBOMs,
-      Homebrew/Scoop manifests, and verifiable provenance.
+- [ ] The selected release mode is closed: either all GitHub workflows are
+      green, or Actions are disabled and the documented local CI, security,
+      Pages, and release audits pass.
+- [ ] `v1.0.0` release contains six archives, checksums, six SPDX SBOMs, and
+      Homebrew/Scoop manifests. GitHub provenance is required only for the
+      Actions release mode and must not be claimed for a manual release.
 - [ ] CLI installs and runs from public artifacts on clean Windows, macOS, and
       Linux hosts.
 - [ ] Plugin installs from the public Git marketplace in a clean Codex setup.

@@ -83,9 +83,13 @@ const copyText = async (value) => {
 document.querySelectorAll("[data-copy]").forEach((button) => {
   button.addEventListener("click", async () => {
     const originalLabel = button.textContent;
+    const target = button.dataset.copyTarget
+      ? document.querySelector(button.dataset.copyTarget)
+      : null;
+    const value = target?.textContent || button.dataset.copy || "";
 
     try {
-      await copyText(button.dataset.copy || "");
+      await copyText(value);
       button.textContent = "Copied";
     } catch {
       button.textContent = "Select text";
@@ -103,6 +107,19 @@ document.querySelectorAll("[data-copy]").forEach((button) => {
       button.textContent = originalLabel;
     }, 1800);
   });
+});
+
+document.querySelectorAll("[data-readme-source]").forEach(async (target) => {
+  try {
+    const response = await fetch(target.dataset.readmeSource, { cache: "no-cache" });
+    if (!response.ok) {
+      throw new Error(`README request failed with ${response.status}`);
+    }
+    target.textContent = await response.text();
+  } catch {
+    target.textContent = "The full README could not be loaded here. Open it in the GitHub repository instead.";
+    target.dataset.loadError = "true";
+  }
 });
 
 document.querySelectorAll("[data-year]").forEach((element) => {

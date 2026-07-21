@@ -93,6 +93,7 @@ jobs:
         run: |
           mkdir _site
           cp -a site/. _site/
+          cp README.md _site/README.md
           mkdir -p _site/schemas
           cp schemas/*.schema.json _site/schemas/
           touch _site/.nojekyll
