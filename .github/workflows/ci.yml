@@ -146,7 +146,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p "$RUNNER_TEMP/beforedone-hook-bin"
-          go build -trimpath -o "$RUNNER_TEMP/beforedone-hook-bin/beforedone" ./cmd/beforedone
+          version="$(python -c 'import json; print(json.load(open("plugins/beforedone/.codex-plugin/plugin.json", encoding="utf-8"))["version"])')"
+          go build -trimpath -ldflags "-X main.version=$version" -o "$RUNNER_TEMP/beforedone-hook-bin/beforedone" ./cmd/beforedone
 
       - name: Smoke test raw Unix hook command with CLI present and missing
         if: runner.os != 'Windows'
@@ -183,7 +184,8 @@ jobs:
         run: |
           $bin = Join-Path $env:RUNNER_TEMP 'beforedone-hook-bin'
           New-Item -ItemType Directory -Force $bin | Out-Null
-          go build -trimpath -o (Join-Path $bin 'beforedone.exe') ./cmd/beforedone
+          $version = (Get-Content plugins/beforedone/.codex-plugin/plugin.json -Raw | ConvertFrom-Json).version
+          go build -trimpath -ldflags "-X main.version=$version" -o (Join-Path $bin 'beforedone.exe') ./cmd/beforedone
 
       - name: Smoke test raw Windows hook command with CLI present and missing
         if: runner.os == 'Windows'
