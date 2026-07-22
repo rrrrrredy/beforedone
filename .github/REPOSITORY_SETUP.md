@@ -45,13 +45,14 @@ Always verify a downloaded archive's SHA-256 value against `checksums.txt`
 before running the binary. Each archive also ships with an SPDX SBOM.
 
 Releases produced by the Actions workflow additionally have GitHub build
-provenance and can be verified with GitHub CLI:
+provenance and can be verified with GitHub CLI when the release record
+explicitly claims an attestation:
 
 ```console
-gh attestation verify beforedone_1.0.0_linux_amd64.tar.gz --repo rrrrrredy/beforedone
+gh attestation verify PATH_TO_DOWNLOADED_ARCHIVE --repo rrrrrredy/beforedone
 ```
 
 Manual no-Actions releases do not claim GitHub OIDC provenance; their public
 verification boundary is the tag, release asset matrix, checksums, SBOMs, and
-the documented local quality-gate record. The v1.0.0 record is
-[`docs/launch/v1.0.0-release-evidence.md`](../docs/launch/v1.0.0-release-evidence.md).
+the documented local quality-gate record. The current v1.0.1 record is
+[`docs/releases/v1.0.1-release-evidence.md`](../docs/releases/v1.0.1-release-evidence.md).

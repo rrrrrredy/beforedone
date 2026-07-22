@@ -1,8 +1,0 @@
-[stdout]
---- FAIL: TestAdd (0.00s)
-    calculator_test.go:7: Add(20, 22) = -2, want 42
-FAIL
-FAIL	example.com/beforedone-demo	0.796s
-FAIL
-
-[stderr]

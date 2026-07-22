@@ -17,7 +17,7 @@ Hook-enabled Codex Plugin remains available from the public Git marketplace.
 - **Privacy:** https://rrrrrredy.github.io/beforedone/privacy.html
 - **Terms:** https://rrrrrredy.github.io/beforedone/terms.html
 - **Source:** https://github.com/rrrrrredy/beforedone
-- **Logo:** `media/product-hunt-thumbnail.png` (240×240 RGB PNG)
+- **Logo:** `docs/openai-directory/logo.png` (240×240 RGB PNG)
 - **Bundle:**
   [beforedone-openai-directory-skills-v1.0.1.zip](https://github.com/rrrrrredy/beforedone/releases/download/v1.0.1/beforedone-openai-directory-skills-v1.0.1.zip)
 - **Bundle SHA-256:** `06b67b4dec7586aa0b9ea4cf3ce6ee94431ad4c57d8ebd95535c168fc904ec45`
@@ -65,6 +65,10 @@ The publisher must complete these steps in the OpenAI Platform:
 
 Do not upload the Git Marketplace plugin directory to the Skills-only form: it
 contains hooks and wrapper scripts outside the submitted distribution contract.
+
+A demo video is not part of the Skills-only submission materials and is not a
+BeforeDone completion requirement. Reviewers can reproduce every submitted case
+from the public CLI, repository fixtures, and the exact versioned ZIP.
 
 The current official requirements are maintained in
 [Submit plugins](https://learn.chatgpt.com/docs/submit-plugins); the portal is

@@ -61,7 +61,7 @@ Review setup for positive cases 1–5:
 ### 5. Analyze replay without execution
 
 - **Fixture/data:** Use the public
-  `media/source/artifacts/replay-case.json` from the cloned repository. Copy it
+  `fixtures/demo/replay-case.json` from the cloned repository. Copy it
   into the prepared temporary fixture as `replay-case.json`.
 - **Prompt:**
   `Analyze this BeforeDone replay case, but do not execute any verifier commands.`
