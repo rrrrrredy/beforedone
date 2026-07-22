@@ -1,15 +1,19 @@
-# BeforeDone v1.0 launch control room
+# BeforeDone launch control room
 
 This directory is the source of truth for launch copy and media acceptance. A
 checked box must point to a real public URL or a file captured from a real
 BeforeDone run. Mock screenshots and slide-only videos do not count.
 
+The current engineering release is v1.0.1. The v1.0.0 evidence remains an
+immutable historical record.
+
 ## Canonical links
 
 - Product: <https://rrrrrredy.github.io/beforedone/>
 - Source: <https://github.com/rrrrrredy/beforedone>
-- Release: <https://github.com/rrrrrredy/beforedone/releases/tag/v1.0.0>
-- Release evidence: [v1.0.0-release-evidence.md](v1.0.0-release-evidence.md)
+- Release: <https://github.com/rrrrrredy/beforedone/releases/tag/v1.0.1>
+- Release evidence: [v1.0.1-release-evidence.md](v1.0.1-release-evidence.md)
+- Previous release evidence: [v1.0.0-release-evidence.md](v1.0.0-release-evidence.md)
 - OpenAI Public Plugins Directory: pending identity verification, review, and publication
 - Product Hunt: pending submission
 - YouTube demo: pending upload
@@ -34,16 +38,19 @@ Do not create empty placeholders for these files. Missing means missing.
 
 - [x] The selected release mode is closed: either all GitHub workflows are
       green, or Actions are disabled and the documented local CI, security,
-      Pages, and release audits pass. Evidence: [v1.0.0 release audit](v1.0.0-release-evidence.md).
-- [x] `v1.0.0` release contains six archives, checksums, six SPDX SBOMs, and
-      Homebrew/Scoop manifests. GitHub provenance is required only for the
-      Actions release mode and is not claimed for this manual release.
+      Pages, and release audits pass. Evidence: [v1.0.1 release audit](v1.0.1-release-evidence.md).
+- [x] `v1.0.1` release contains six archives, checksums, six SPDX SBOMs,
+      Homebrew/Scoop manifests, and the Skills-only Directory bundle. All six
+      archives include third-party notices. GitHub provenance is required only
+      for the Actions release mode and is not claimed for this manual release.
 - [ ] CLI installs and runs from public artifacts on clean Windows, macOS, and
       Linux hosts.
-- [x] Plugin installs and enables from the public Git marketplace in an
-      isolated clean Codex setup; cached plugin files match the source.
+- [ ] Reinstall the v1.0.1 Plugin from the public Git marketplace in a clean
+      Codex setup and confirm the hooks and both Skills. The v1.0.0 install
+      baseline passed, and the v1.0.1 source/distribution validators pass, but
+      this host could not rerun the installed Codex CLI from WindowsApps.
 - [x] Both standalone skills install with the official Codex skill installer
-      from the public `v1.0.0` tag; installed files match the tagged Git blobs.
+      from the public `v1.0.1` tag; installed files match the tagged Git blobs.
 - [x] Both public skills.sh discovery pages resolve anonymously. This is a
       discovery check, not a claim that the third-party `npx skills` client ran.
 - [x] The exact public Skills-only ZIP installs and enables in a fresh isolated
