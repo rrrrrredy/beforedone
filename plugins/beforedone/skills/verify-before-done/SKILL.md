@@ -12,6 +12,7 @@ Use the BeforeDone CLI as the only authority for a valid Completion Receipt. Raw
 - Work in the intended Git worktree and preserve the user's stated scope.
 - Treat this standalone skill as a manual workflow. It cannot install a Stop hook or prevent Codex from ending a turn; lifecycle enforcement comes from the BeforeDone Git Marketplace Plugin or project-local hooks installed with `beforedone setup codex`.
 - Never fabricate, edit, or relabel a receipt. Only `beforedone check` may create one.
+- A fresh receipt proves only that the configured verifier passed for its declared files. If the task's acceptance criteria are not credibly covered, report the uncovered criteria as unverified; do not present the receipt as proof of them or weaken checks merely to obtain PASS.
 - Do not silently install or download the CLI. If `beforedone` is unavailable, report that fact and offer `go install github.com/rrrrrredy/beforedone/cmd/beforedone@latest` for explicit approval.
 
 ## Workflow

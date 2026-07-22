@@ -9,7 +9,7 @@ the final cut must come from the checked-in fixture and the actual product.
 Do not start the final recording until all of these are true:
 
 - `https://github.com/rrrrrredy/beforedone` is public.
-- The CLI installed on system `PATH` reports `beforedone 1.0.0`.
+- The CLI installed on system `PATH` reports `beforedone 1.0.1`.
 - The public Git marketplace installs the BeforeDone Plugin.
 - The Plugin hooks appear in `/hooks`, have been reviewed and trusted, and a
   new Codex task can see the two bundled skills.
@@ -38,7 +38,7 @@ failing check to an incident, or from the fix to a fresh receipt.
 
 ## Rehearsal build from the Go module root
 
-The final cut should use the public v1.0.0 binary. This local build exists only
+The final cut should use the public v1.0.1 binary. This local build exists only
 for rehearsal and for validating the runbook before release. Run it exactly
 from the module root so Go resolves the checked-in `go.mod`:
 
@@ -59,7 +59,7 @@ try {
 & $RehearsalBin version
 ```
 
-Never label this `dev` build as a public v1.0.0 artifact in the final video.
+Never label this `dev` build as a public v1.0.1 artifact in the final video.
 
 ## Deterministic fixture preparation
 

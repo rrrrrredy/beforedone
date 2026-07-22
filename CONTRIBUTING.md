@@ -13,6 +13,10 @@ and safety invariants. Discuss large behavioral changes in an issue first.
 Changes to receipts, fingerprints, hook decisions, replay execution, redaction,
 or public schemas require regression tests and an adversarial review.
 
+User-facing README, site, install, or release-documentation changes must stay
+in sync. With GitHub Actions disabled, maintainers publish the matching static
+files to `gh-pages` and verify the public routes before calling the update done.
+
 ## Developer Certificate of Origin
 
 This project uses the Developer Certificate of Origin 1.1 instead of a CLA.

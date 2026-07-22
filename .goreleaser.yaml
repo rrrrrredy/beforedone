@@ -43,6 +43,7 @@ archives:
     files:
       - LICENSE
       - NOTICE
+      - THIRD_PARTY_NOTICES
       - README.md
 
 checksum:

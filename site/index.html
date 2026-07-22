@@ -78,7 +78,7 @@
     <section class="proof-sequence section-paper" aria-labelledby="proof-heading">
       <div class="section-intro">
         <h2 id="proof-heading">No fresh evidence.<br>No credible done.</h2>
-        <p>BeforeDone evaluates explicit verifier results against the files they cover. It asks Codex for one corrective continuation when the proof is missing, failed, or stale.</p>
+        <p>BeforeDone evaluates explicit verifier results against their declared relevant-file scope. It asks Codex for one corrective continuation when the proof is missing, failed, or stale.</p>
       </div>
 
       <ol class="gate-steps">
@@ -101,7 +101,7 @@
         <li>
           <span class="step-number">04</span>
           <h3>Fresh check passes</h3>
-          <p>The new receipt covers the actual current files.</p>
+            <p>The new receipt matches the current declared relevant files.</p>
           <span class="stamp stamp-green">PASS</span>
         </li>
         <li>
@@ -114,7 +114,7 @@
       <div class="receipt-anatomy">
         <div>
           <h3>Evidence receipt anatomy</h3>
-          <p>A receipt records what actually ran, its exit status, and exactly which configured files it covered.</p>
+          <p>A receipt records what actually ran, its exit status, and which configured relevant files were fingerprinted.</p>
         </div>
         <pre aria-label="Evidence receipt JSON example"><code>{
   "schema_version": 1,
@@ -266,6 +266,14 @@
         <details open>
           <summary>Can log text forge a PASS?</summary>
           <p>Not through the supported check flow. A word such as “PASS” in output cannot override a non-zero exit; <code>beforedone check</code> records the process result and current fingerprint. This is not protection from a malicious same-user process that can read the key, change policy, and rewrite local evidence.</p>
+        </details>
+        <details>
+          <summary>Does BeforeDone decide what to test?</summary>
+          <p>No. BeforeDone verifies project-approved commands and keeps their evidence fresh; it does not infer whether they fully cover a natural-language requirement. Ask Codex to map the task to existing tests or a focused regression test, review the generated <code>.beforedone.yaml</code>, and report any uncovered criterion as unverified.</p>
+        </details>
+        <details>
+          <summary>Why Apache-2.0 rather than MIT?</summary>
+          <p>Both are permissive licenses that allow commercial use, modification, and redistribution. Apache-2.0 also provides an explicit patent license and clearer contribution and notice rules, which fit an extensible developer tool. It does not grant rights to the BeforeDone name or logo.</p>
         </details>
         <details>
           <summary>Is a receipt tamper-proof attestation?</summary>

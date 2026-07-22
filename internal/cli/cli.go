@@ -494,6 +494,7 @@ func (a *App) licenses(args []string) int {
 	}
 	items := []map[string]string{
 		{"component": "BeforeDone", "license": "Apache-2.0", "source": "https://github.com/rrrrrredy/beforedone"},
+		{"component": "Go standard library and runtime", "license": "BSD-3-Clause", "source": "https://go.dev/LICENSE"},
 		{"component": "golang.org/x/sys", "license": "BSD-3-Clause", "source": "https://go.googlesource.com/sys"},
 		{"component": "gopkg.in/yaml.v3", "license": "MIT and Apache-2.0", "source": "https://github.com/go-yaml/yaml"},
 	}

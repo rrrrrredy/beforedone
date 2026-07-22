@@ -1,4 +1,4 @@
-# OpenAI Plugins Directory submission — BeforeDone v1.0.0
+# OpenAI Plugins Directory submission — BeforeDone v1.0.1
 
 ## Distribution boundary
 
@@ -19,15 +19,15 @@ Hook-enabled Codex Plugin remains available from the public Git marketplace.
 - **Source:** https://github.com/rrrrrredy/beforedone
 - **Logo:** `media/product-hunt-thumbnail.png` (240×240 RGB PNG)
 - **Bundle:**
-  [beforedone-openai-directory-skills-v1.0.0.zip](https://github.com/rrrrrredy/beforedone/releases/download/v1.0.0/beforedone-openai-directory-skills-v1.0.0.zip)
-- **Bundle SHA-256:** `4f441aca93655af97a38e1d2c1516a237a22ebd16cc906065e2c36badd265cd8`
+  [beforedone-openai-directory-skills-v1.0.1.zip](https://github.com/rrrrrredy/beforedone/releases/download/v1.0.1/beforedone-openai-directory-skills-v1.0.1.zip)
+- **Bundle SHA-256:** `06b67b4dec7586aa0b9ea4cf3ce6ee94431ad4c57d8ebd95535c168fc904ec45`
 
 Long description:
 
 > BeforeDone helps developers verify a coding agent's completion claim against
 > fresh local checks and investigate failed runs from observable evidence. Its
 > two skills guide the open-source BeforeDone CLI: one creates and evaluates
-> evidence receipts bound to relevant files; the other builds a local Incident
+> evidence receipts bound to their declared relevant-file scope; the other builds a local Incident
 > Report, identifies the earliest evidence-supported divergence, and prepares
 > safe replay analysis. The Skills-only Directory edition is a manual workflow
 > and does not install or claim Codex Stop Hook enforcement. No account, cloud
@@ -42,10 +42,12 @@ Long description:
 
 ## Release notes
 
-Initial v1.0.0 submission. This Skills-only plugin packages two audited manual
-workflows backed by the Apache-2.0 BeforeDone CLI. It does not include an MCP
-server or automatic Stop Hook. The separate Git Marketplace distribution adds
-Codex lifecycle hooks for users who explicitly install and trust them.
+The v1.0.1 submission clarifies how to choose credible checks and requires
+uncovered acceptance criteria to be reported as unverified. This Skills-only
+plugin packages two audited manual workflows backed by the Apache-2.0
+BeforeDone CLI. It does not include an MCP server or automatic Stop Hook. The
+separate Git Marketplace distribution adds Codex lifecycle hooks for users who
+explicitly install and trust them.
 
 ## Human checkpoints
 

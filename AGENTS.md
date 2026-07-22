@@ -17,6 +17,7 @@
 - Public JSON includes `schema_version: 1`.
 - Canonical standalone skills live in `skills/`; plugin copies live in `plugins/beforedone/skills/` and must be mechanically synchronized and CI-checked.
 - The site is static and served from `/beforedone/`; use relative asset links or the explicit project base path.
+- Ship user-facing README, site, install, and release-documentation changes together. Because GitHub Actions are disabled, manually refresh `gh-pages` and verify the public routes before claiming those changes are complete.
 - Use argv arrays and `exec.Command`, never shell-interpolated verifier strings.
 
 ## Verification

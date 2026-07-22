@@ -2,7 +2,7 @@
 
 Review setup for positive cases 1–5:
 
-- Install the public BeforeDone v1.0.0 CLI release.
+- Install the public BeforeDone v1.0.1 CLI release.
 - Clone `https://github.com/rrrrrredy/beforedone`.
 - Copy `fixtures/demo/stale-receipt` to a temporary directory, initialize Git,
   configure a local test identity, add all files, and create one commit.

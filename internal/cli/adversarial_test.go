@@ -117,6 +117,41 @@ func TestHookRejectsIncompatiblePluginMajorWithValidJSON(t *testing.T) {
 	}
 }
 
+func TestLicensesIncludesRuntimeAndLinkedDependencies(t *testing.T) {
+	code, stdout, stderr := runCLI(t, t.TempDir(), "licenses", "--json")
+	if code != ExitOK {
+		t.Fatalf("licenses exit = %d\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	var output struct {
+		SchemaVersion int `json:"schema_version"`
+		Licenses      []struct {
+			Component string `json:"component"`
+		} `json:"licenses"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &output); err != nil {
+		t.Fatalf("invalid licenses JSON %q: %v", stdout, err)
+	}
+	if output.SchemaVersion != 1 {
+		t.Fatalf("schema_version = %d, want 1", output.SchemaVersion)
+	}
+	want := map[string]bool{
+		"BeforeDone":                      false,
+		"Go standard library and runtime": false,
+		"golang.org/x/sys":                false,
+		"gopkg.in/yaml.v3":                false,
+	}
+	for _, item := range output.Licenses {
+		if _, ok := want[item.Component]; ok {
+			want[item.Component] = true
+		}
+	}
+	for component, found := range want {
+		if !found {
+			t.Errorf("licenses output omitted %q", component)
+		}
+	}
+}
+
 func runCLI(t *testing.T, cwd string, args ...string) (int, string, string) {
 	t.Helper()
 	var stdout, stderr bytes.Buffer
