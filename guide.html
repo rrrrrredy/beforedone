@@ -79,6 +79,27 @@ beforedone init
 beforedone doctor</code></pre>
           </div>
           <p class="guide-callout"><strong>Then choose exactly one Codex route.</strong> The Git Marketplace Plugin, standalone Skills Pack, and project-local hooks are separate delivery forms; combining them duplicates workflows.</p>
+          <p class="guide-callout"><strong>Choose evidence before asking for PASS.</strong> BeforeDone verifies project-approved commands; it does not infer whether they fully cover a natural-language requirement. A user does not need to locate the exact bug, but the task needs observable acceptance criteria and a credible verifier. Treat non-Go <code>git status --short</code> initialization as scaffolding, never correctness proof.</p>
+          <div class="guide-code-block">
+            <div class="guide-code-head"><span>Prompt · configure once</span><button type="button" data-copy data-copy-target="#prompt-configure">Copy</button></div>
+            <pre><code id="prompt-configure">Help me configure BeforeDone for this repository. Inspect the existing test,
+build, lint, type-check, package-script, and CI configuration. Use
+`beforedone init` only as a starting point. Configure the smallest credible set
+of existing commands, include every file class that can affect each check, and
+report assumptions and coverage gaps. Do not add dependencies, use
+`git status --short` as proof of correctness, or invent a check merely to get
+PASS.</code></pre>
+          </div>
+          <div class="guide-code-block">
+            <div class="guide-code-head"><span>Prompt · verify a task</span><button type="button" data-copy data-copy-target="#prompt-verify">Copy</button></div>
+            <pre><code id="prompt-verify">Use BeforeDone for this task. Turn my request into observable acceptance
+criteria, map them to existing tests or checks, and add the smallest regression
+test when coverage is missing and that change is within scope. Before saying
+done, run every required BeforeDone check and confirm fresh PASS receipts for
+the current files. If any criterion lacks credible evidence, report it as
+unverified instead of calling it PASS. Do not weaken checks merely to obtain
+PASS.</code></pre>
+          </div>
         </section>
 
         <section class="guide-section" id="stop-gate">
@@ -124,7 +145,7 @@ beforedone doctor</code></pre>
           <h2>Incident Replay</h2>
           <p>BeforeDone reconstructs the first observable divergence from normalized events, receipts, diffs, logs, and user corrections. It reports exact events only when evidence supports that precision, and never claims access to hidden chain-of-thought.</p>
           <div class="guide-command-grid">
-            <div><code>beforedone incident create</code><span>Build a local JSON and HTML incident report.</span></div>
+            <div><code>beforedone incident</code><span>Build a local JSON and HTML incident report.</span></div>
             <div><code>beforedone replay analyze case.json</code><span>Re-evaluate deterministic evidence without executing commands.</span></div>
             <div><code>beforedone replay verify case.json --execute</code><span>Explicitly rerun current configured checks in a temporary worktree.</span></div>
           </div>
@@ -170,11 +191,10 @@ beforedone doctor</code></pre>
                 <tr><td><code>beforedone init</code></td><td>Create a reviewed starter policy for the repository.</td></tr>
                 <tr><td><code>beforedone doctor</code></td><td>Check Git, policy, runtime directories, CLI, and optional Codex hooks.</td></tr>
                 <tr><td><code>beforedone check &lt;id&gt;</code></td><td>Run one configured verifier and record a bounded receipt.</td></tr>
-                <tr><td><code>beforedone status</code></td><td>Evaluate required receipts against current relevant files.</td></tr>
-                <tr><td><code>beforedone hook codex</code></td><td>Apply the Stop Gate contract for Codex.</td></tr>
-                <tr><td><code>beforedone incident create</code></td><td>Generate an evidence-only incident report.</td></tr>
+                <tr><td><code>beforedone receipt [id]</code></td><td>Evaluate a Receipt against the current relevant files.</td></tr>
+                <tr><td><code>beforedone incident</code></td><td>Generate an evidence-only incident report.</td></tr>
                 <tr><td><code>beforedone replay analyze</code></td><td>Analyze a replay case without executing commands.</td></tr>
-                <tr><td><code>beforedone replay verify --execute</code></td><td>Rerun current allowlisted checks in an isolated worktree.</td></tr>
+                <tr><td><code>beforedone replay verify --execute</code></td><td>Rerun current configured checks in a temporary detached worktree.</td></tr>
                 <tr><td><code>beforedone setup codex</code></td><td>Install or remove project-local Codex hooks.</td></tr>
               </tbody>
             </table>

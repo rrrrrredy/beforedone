@@ -3,14 +3,12 @@
 **Make coding agents prove they're done.**
 
 BeforeDone is an open-source evidence gate and incident replay toolkit for
-Codex. It turns configured checks into receipts bound to the files that were
-actually verified, asks Codex for one corrective continuation when required
+Codex. It turns configured checks into receipts bound to their declared
+relevant-file scope, asks Codex for one corrective continuation when required
 evidence is missing or stale, and reconstructs failed runs from observable
 events and artifacts.
 
-- Website: https://rrrrrredy.github.io/beforedone/
-- Source: https://github.com/rrrrrredy/beforedone
-- Releases: https://github.com/rrrrrredy/beforedone/releases
+[Website and guide](https://rrrrrredy.github.io/beforedone/)
 
 ## One product, three delivery forms
 
@@ -65,7 +63,7 @@ verify it against `checksums.txt`, and put the `beforedone` executable on
 `PATH`.
 
 To install a reproducible version with Go, replace `@latest` with a release tag,
-for example `@v1.0.0`.
+for example `@v1.0.1`.
 
 ## 2. Initialize a repository
 
@@ -100,6 +98,51 @@ reports:
   retain: 20
 ```
 
+### Choose credible checks
+
+A fresh Receipt proves only that the configured verifier passed for its
+declared files. It does not prove that the verifier covers every acceptance
+criterion. The user does not need to diagnose the exact bug, but the task still
+needs observable acceptance criteria and a credible command that tests them.
+
+`beforedone init` is a starting point, not an automatic test designer. It
+recognizes a Go module and proposes `go test ./...`; for other repositories its
+`git status --short` default is only scaffolding and is not correctness proof.
+Review existing test, build, lint, type-check, package-script, and CI commands,
+then keep the smallest set that credibly covers the task. If coverage is
+missing, add a focused regression test when that change is in scope, or report
+the uncovered criterion as unverified.
+
+### Suggested Codex prompts
+
+Configure a repository once:
+
+```text
+Help me configure BeforeDone for this repository. Inspect the existing test,
+build, lint, type-check, package-script, and CI configuration. Use
+`beforedone init` only as a starting point. Configure the smallest credible set
+of existing commands, include every file class that can affect each check, and
+report assumptions and coverage gaps. Do not add dependencies, use
+`git status --short` as proof of correctness, or invent a check merely to get
+PASS.
+```
+
+Verify a task:
+
+```text
+Use BeforeDone for this task. Turn my request into observable acceptance
+criteria, map them to existing tests or checks, and add the smallest regression
+test when coverage is missing and that change is within scope. Before saying
+done, run every required BeforeDone check and confirm fresh PASS receipts for
+the current files. If any criterion lacks credible evidence, report it as
+unverified instead of calling it PASS. Do not weaken checks merely to obtain
+PASS.
+```
+
+These prompts help Codex propose and apply the verification contract; they do
+not turn natural-language confidence into a Receipt. Review `.beforedone.yaml`
+before relying on it.
+
 Do not place credentials in verifier command-line arguments or sensitive names
 in verifier paths. Evidence receipts intentionally preserve the actual argv and
 working-directory metadata so a reviewer can see what ran; those structural
@@ -122,7 +165,9 @@ Relevant globs also include matching Git-ignored files such as generated Go
 sources, and the fingerprint includes executable-mode changes. Git applies the
 ignored-file pathspec before BeforeDone streams results, with hard file-count,
 listing-size, and content-size limits; exceeding a limit fails closed instead
-of silently omitting evidence.
+of silently omitting evidence. Submodule contents are not fingerprinted in v1:
+if a `relevant_files` pattern may cover a Git submodule or a path below it, the
+check fails closed instead of issuing reusable evidence.
 
 ## 3. Choose one Codex integration
 
@@ -184,8 +229,8 @@ $skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skill
 $skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skills/investigate-agent-incident
 ```
 
-The skills become available on the next Codex turn. To pin them to v1.0.0,
-replace `/tree/main/` with `/tree/v1.0.0/` in both URLs.
+The skills become available on the next Codex turn. To pin them to v1.0.1,
+replace `/tree/main/` with `/tree/v1.0.1/` in both URLs.
 
 You can also install both through the third-party `skills.sh` CLI. BeforeDone
 itself has no telemetry, but `skills.sh` is a separate tool and may collect its
@@ -279,6 +324,9 @@ worktree:
 ```sh
 beforedone replay verify --check test --execute
 ```
+
+BeforeDone disables repository Git hooks while it creates that internal
+worktree. The configured verifier still runs normally after checkout.
 
 BeforeDone does not provide network isolation. A configured verifier can use
 the network, credentials, and other resources available to that process. Replay
@@ -404,7 +452,10 @@ For a complete removal:
 
 ## Contributing and license
 
-BeforeDone is licensed under Apache-2.0. Contributions use the Developer
-Certificate of Origin rather than a CLA; sign commits with `git commit -s`.
-See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and
-[TRADEMARKS.md](TRADEMARKS.md).
+BeforeDone is licensed under Apache-2.0. Like MIT, it allows commercial use,
+modification, and redistribution, but it also gives contributors and users an
+explicit patent license and defines contribution, NOTICE, and trademark
+boundaries. Contributions use the Developer Certificate of Origin rather than
+a CLA; sign commits with `git commit -s`. See
+[CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md),
+[TRADEMARKS.md](TRADEMARKS.md), and [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES).
