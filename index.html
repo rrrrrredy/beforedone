@@ -192,7 +192,7 @@
     <section class="install section-paper" id="install" aria-labelledby="install-heading">
       <div class="section-intro install-intro">
         <h2 id="install-heading">One core. Choose one Codex route.</h2>
-        <p>The CLI is the source of truth and is always required. Then choose exactly one integration: the Git Marketplace Plugin for hooks plus both bundled skills, the standalone Skills Pack for a manual workflow, or project-local hooks from <code>beforedone setup codex</code>. The <a href="https://learn.chatgpt.com/docs/submit-plugins">OpenAI Public Plugins Directory</a> package is Skills-only and belongs to the manual route; it cannot enforce Stop. Combining routes duplicates hooks or workflows.</p>
+        <p>The CLI is the source of truth and is always required. Then choose exactly one integration: the Git Marketplace Plugin for hooks plus both bundled skills, the standalone Skills Pack for a manual workflow, or project-local hooks from <code>beforedone setup codex</code>. Combining routes duplicates hooks or workflows.</p>
       </div>
 
       <div class="install-switcher" data-tabs>
@@ -214,7 +214,7 @@
 
         <div class="tab-panel" id="panel-plugin" role="tabpanel" aria-labelledby="tab-plugin" data-panel="plugin" hidden>
           <h3>Add the public Git marketplace</h3>
-          <p>This is the full automatic Plugin, not the Skills-only Public Directory package. Install the CLI first, add the marketplace below, restart the desktop app, then open the Plugins Directory, select the <code>beforedone</code> source, and install BeforeDone in the UI. Review and trust the hooks with <code>/hooks</code>, then start a new task. Do not also install the standalone pack or project hooks. Hooks never download executables silently.</p>
+          <p>Install the CLI first, add the marketplace below, restart the desktop app, then open the Plugins Directory, select the <code>beforedone</code> source, and install BeforeDone in the UI. Review and trust the hooks with <code>/hooks</code>, then start a new task. Do not also install the standalone pack or project hooks. Hooks never download executables silently.</p>
           <div class="copy-row">
             <code>codex plugin marketplace add rrrrrredy/beforedone</code>
             <button type="button" data-copy="codex plugin marketplace add rrrrrredy/beforedone">Copy</button>
@@ -223,7 +223,7 @@
 
         <div class="tab-panel" id="panel-skills" role="tabpanel" aria-labelledby="tab-skills" data-panel="skills" hidden>
           <h3>Use the manual workflows</h3>
-          <p>Choose this instead of the Git Plugin or project hooks. The standalone Skills—and the Skills-only package prepared for the OpenAI Public Plugins Directory—guide verification and incident analysis, but cannot capture lifecycle events or enforce a Stop Hook. Run both exact installer prompts, then start a new Codex turn.</p>
+          <p>Choose this instead of the Git Plugin or project hooks. The standalone Skills guide verification and incident analysis, but cannot capture lifecycle events or enforce a Stop Hook. Run both exact installer prompts, then start a new Codex turn.</p>
           <div class="copy-row">
             <code>$skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skills/verify-before-done</code>
             <button type="button" data-copy="$skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skills/verify-before-done">Copy</button>
@@ -278,10 +278,6 @@
         <details>
           <summary>Is a receipt tamper-proof attestation?</summary>
           <p>No. The key, configuration, and runtime artifacts are local. A malicious process with the same user and repository write access can manufacture a self-consistent PASS. BeforeDone targets fallible Agents and stale claims; hostile Agents require an external trust boundary.</p>
-        </details>
-        <details>
-          <summary>Does the Public Plugins Directory version enforce Stop?</summary>
-          <p>No. BeforeDone's no-MCP Public Directory package is Skills-only. Use the Git Marketplace Plugin or project-local hooks for the automatic Stop Gate.</p>
         </details>
         <details>
           <summary>Does replay rerun the model?</summary>
