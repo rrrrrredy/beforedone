@@ -32,13 +32,6 @@ Do not combine these routes in one Codex environment. The Plugin plus
 standalone Skills duplicates the workflows; the Plugin plus project-local
 hooks runs the lifecycle integration twice.
 
-The [OpenAI Public Plugins Directory](https://learn.chatgpt.com/docs/submit-plugins)
-and the Git Marketplace are different distribution surfaces. Under the current
-Directory submission categories, BeforeDone's no-MCP Directory package is
-**Skills-only**. It provides the two manual workflows and cannot enforce a Stop
-Hook. The full automatic gate comes from the Git Marketplace Plugin or the
-project-local hooks route.
-
 ## Requirements
 
 - A Git repository. BeforeDone resolves its local runtime through Git.
@@ -212,12 +205,6 @@ Plugin in the Plugins Directory.
 
 Choose this route instead of the Plugin. It installs the same workflows but
 cannot observe lifecycle events or enforce a Stop Gate.
-
-The Skills-only BeforeDone package submitted to the OpenAI Public Plugins
-Directory belongs to this route as well. Installing that Directory package does
-not install the BeforeDone Hook and does not turn the manual workflow into an
-automatic gate. Install, update, or uninstall the Directory package through the
-Plugins Directory UI; use the Git commands below only for the standalone pack.
 
 Ask Codex to run the built-in skill installer once for each exact path:
 

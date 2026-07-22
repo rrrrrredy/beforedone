@@ -8,11 +8,11 @@ third-party-review exceptions explicit.
 - [v1.0.0](v1.0.0-release-evidence.md) is the initial public release.
 
 A promotional video was considered and deliberately removed from the project
-completion boundary. It is not required to install, use, audit, release, or
-submit the Skills-only OpenAI Directory package. The public Incident example
-and reproducible review fixtures provide inspectable evidence without keeping
-rehearsal captures and recording machinery in `main`.
+completion boundary. The public Incident example and reproducible review
+fixtures provide inspectable evidence without keeping rehearsal captures and
+recording machinery in `main`.
 
-The OpenAI Directory package is prepared for external review. It must not be
-described as approved or published until OpenAI completes review and the
-maintainer publishes it.
+The v1.0.0 and v1.0.1 records preserve the fact that a Skills-only OpenAI
+Directory artifact was built and verified with those releases. The maintainer
+later canceled that distribution path. BeforeDone is not listed in the OpenAI
+Public Plugins Directory, and future releases do not publish that artifact.

@@ -74,17 +74,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build the skills-only OpenAI Plugin Directory bundle
-        shell: bash
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          python scripts/package_directory_skills.py \
-            --version "$version" \
-            --output-dir dist/directory
-          python scripts/package_directory_skills.py \
-            --version "$version" \
-            --verify "dist/directory/beforedone-openai-directory-skills-v${version}.zip"
-
       - name: Verify release matrix, checksums, SBOMs, and manifests
         shell: bash
         run: |
@@ -146,19 +135,11 @@ jobs:
           cp "$cask" dist/package-manifests/beforedone.rb
           cp "$scoop" dist/package-manifests/beforedone.json
 
-          directory_bundle="dist/directory/beforedone-openai-directory-skills-v${version}.zip"
-          test -f "$directory_bundle" || { echo "missing Directory skills bundle"; exit 1; }
-          test -f "$directory_bundle.sha256" || { echo "missing Directory bundle checksum"; exit 1; }
-          (
-            cd "$(dirname "$directory_bundle")"
-            sha256sum --check "$(basename "$directory_bundle").sha256"
-          )
-
           mkdir -p dist/smoke
           tar -xzf "dist/beforedone_${version}_linux_amd64.tar.gz" -C dist/smoke
           dist/smoke/beforedone --help >/dev/null
 
-      - name: Attach package-manager and Directory assets to the release
+      - name: Attach package-manager assets to the release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -166,8 +147,6 @@ jobs:
           gh release upload "$GITHUB_REF_NAME" \
             dist/package-manifests/beforedone.rb \
             dist/package-manifests/beforedone.json \
-            dist/directory/beforedone-openai-directory-skills-v*.zip \
-            dist/directory/beforedone-openai-directory-skills-v*.zip.sha256 \
             --clobber
 
       - name: Attest released archives and checksums
@@ -179,8 +158,6 @@ jobs:
             dist/checksums.txt
             dist/package-manifests/beforedone.rb
             dist/package-manifests/beforedone.json
-            dist/directory/*.zip
-            dist/directory/*.zip.sha256
 
   draft-smoke:
     name: Draft artifact smoke test on ${{ matrix.os }}
@@ -343,13 +320,6 @@ jobs:
           curl --fail --location --retry 5 --retry-all-errors \
             --output download/checksums.txt "$base/checksums.txt"
           printf '%s' "$artifact" > download/artifact-name
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            directory="beforedone-openai-directory-skills-v${version}.zip"
-            curl --fail --location --retry 5 --retry-all-errors \
-              --output "download/$directory" "$base/$directory"
-            curl --fail --location --retry 5 --retry-all-errors \
-              --output "download/$directory.sha256" "$base/$directory.sha256"
-          fi
 
       - name: Download public assets without credentials on Windows
         if: runner.os == 'Windows'
@@ -389,45 +359,6 @@ jobs:
           mkdir extracted
           tar -xzf "download/$artifact" -C extracted
           test "$(extracted/beforedone version)" = "beforedone ${GITHUB_REF_NAME#v}"
-
-      - name: Verify public skills-only Directory asset on Linux
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          directory="beforedone-openai-directory-skills-v${version}.zip"
-          (
-            cd download
-            sha256sum --check "$directory.sha256"
-          )
-          DIRECTORY_ZIP="download/$directory" EXPECTED_VERSION="$version" python - <<'PY'
-          import json
-          import os
-          import zipfile
-          from pathlib import PurePosixPath
-
-          path = os.environ["DIRECTORY_ZIP"]
-          with zipfile.ZipFile(path) as bundle:
-              names = bundle.namelist()
-              manifest = json.loads(bundle.read(".codex-plugin/plugin.json"))
-          if manifest.get("version") != os.environ["EXPECTED_VERSION"]:
-              raise SystemExit("Directory bundle version mismatch")
-          if manifest.get("skills") != "./skills/":
-              raise SystemExit("Directory bundle is not skills-only")
-          if set(manifest).intersection({"hooks", "mcpServers", "apps"}):
-              raise SystemExit("Directory manifest advertises a forbidden component")
-          required = {
-              "skills/verify-before-done/SKILL.md",
-              "skills/investigate-agent-incident/SKILL.md",
-          }
-          if not required.issubset(names):
-              raise SystemExit("Directory bundle is missing required skills")
-          for raw in names:
-              parts = PurePosixPath(raw).parts
-              if ".." in parts or any(part in {"hooks", "scripts"} for part in parts):
-                  raise SystemExit(f"unsafe or forbidden Directory entry: {raw}")
-          print("validated anonymously downloaded skills-only Directory bundle")
-          PY
 
       - name: Verify and run public archive on Windows
         if: runner.os == 'Windows'

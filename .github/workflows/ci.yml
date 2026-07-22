@@ -95,19 +95,6 @@ jobs:
       - name: Validate plugin, marketplace, hooks, and skills contract
         run: python scripts/validate_distribution.py
 
-      - name: Build and reproduce the skills-only Directory submission bundle
-        shell: bash
-        run: |
-          first="$RUNNER_TEMP/directory-bundle-first"
-          second="$RUNNER_TEMP/directory-bundle-second"
-          python scripts/package_directory_skills.py --output-dir "$first"
-          python scripts/package_directory_skills.py --output-dir "$second"
-          first_zip="$(find "$first" -maxdepth 1 -type f -name '*.zip' -print -quit)"
-          second_zip="$(find "$second" -maxdepth 1 -type f -name '*.zip' -print -quit)"
-          test -n "$first_zip" && test -n "$second_zip"
-          cmp "$first_zip" "$second_zip"
-          python scripts/package_directory_skills.py --verify "$first_zip"
-
       - name: Check GoReleaser configuration
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
         with:
