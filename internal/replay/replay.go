@@ -175,8 +175,12 @@ func Verify(repo *repository.Repository, cfg model.Config, path, selected string
 		return nil, err
 	}
 	defer os.RemoveAll(parent)
+	disabledHooks := filepath.Join(parent, "disabled-hooks")
+	if err := os.Mkdir(disabledHooks, 0o700); err != nil {
+		return nil, fmt.Errorf("create disabled hooks directory: %w", err)
+	}
 	worktree := filepath.Join(parent, "worktree")
-	if _, err := repo.Git("worktree", "add", "--detach", worktree, "HEAD"); err != nil {
+	if _, err := repo.Git("-c", "core.hooksPath="+disabledHooks, "worktree", "add", "--detach", worktree, "HEAD"); err != nil {
 		return nil, fmt.Errorf("create detached replay worktree: %w", err)
 	}
 	defer repo.Git("worktree", "remove", "--force", worktree)

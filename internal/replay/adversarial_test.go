@@ -69,6 +69,44 @@ func TestExecuteUsesCurrentConfigAndIgnoresImportedArgv(t *testing.T) {
 	assertReplayFileAbsent(t, importedMarker)
 }
 
+func TestVerifyExecuteDoesNotRunConfiguredGitHooks(t *testing.T) {
+	repo := newReplayTestRepo(t)
+	hooksDir := filepath.Join(t.TempDir(), "hooks")
+	if err := os.MkdirAll(hooksDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	hook := filepath.Join(hooksDir, "post-checkout")
+	if err := os.WriteFile(hook, []byte("#!/bin/sh\nprintf executed > \"$BEFOREDONE_TEST_HOOK_MARKER\"\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(hook, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runReplayGit(t, repo.Root, "config", "core.hooksPath", filepath.ToSlash(hooksDir))
+	marker := filepath.Join(t.TempDir(), "post-checkout-ran")
+	t.Setenv("BEFOREDONE_TEST_HOOK_MARKER", filepath.ToSlash(marker))
+	control := filepath.Join(t.TempDir(), "control-worktree")
+	if _, err := repo.Git("worktree", "add", "--detach", control, "HEAD"); err != nil {
+		t.Fatalf("create control worktree: %v", err)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("post-checkout fixture did not run in control worktree: %v", err)
+	}
+	if _, err := repo.Git("worktree", "remove", "--force", control); err != nil {
+		t.Fatalf("remove control worktree: %v", err)
+	}
+	if err := os.Remove(marker); err != nil {
+		t.Fatal(err)
+	}
+
+	casePath := writeReplayCase(t, repo, validReplayCase(nil), nil)
+	cfg := replayTestConfig(replayHelperArgv("touch", filepath.Join(t.TempDir(), "configured-ran")))
+	if _, err := Verify(repo, cfg, casePath, "", true); err != nil {
+		t.Fatal(err)
+	}
+	assertReplayFileAbsent(t, marker)
+}
+
 func TestLoadCaseRejectsUnknownFields(t *testing.T) {
 	repo := newReplayTestRepo(t)
 	replayCase := validReplayCase(nil)

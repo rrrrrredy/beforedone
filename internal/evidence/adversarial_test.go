@@ -131,6 +131,67 @@ func TestExecutableModeInvalidatesFingerprint(t *testing.T) {
 	}
 }
 
+func TestFingerprintFailsClosedForPossiblyRelevantGitlink(t *testing.T) {
+	repo := newEvidenceTestRepo(t)
+	firstCommit, secondCommit := addEvidenceGitlink(t, repo, "vendor/lib")
+
+	for _, patterns := range [][]string{
+		{"vendor/lib"},
+		{"vendor/lib/main.go"},
+		{"**/*.go"},
+		{"ven*/lib/**/*.go"},
+	} {
+		if _, _, err := Fingerprint(repo, patterns); err == nil || !strings.Contains(err.Error(), "submodule contents are not fingerprinted") {
+			t.Fatalf("Fingerprint(%q) error = %v, want fail-closed submodule error", patterns, err)
+		}
+	}
+
+	runEvidenceGit(t, repo.Root, "update-index", "--cacheinfo", "160000,"+secondCommit+",vendor/lib")
+	if _, _, err := Fingerprint(repo, []string{"vendor/lib/**"}); err == nil {
+		t.Fatal("changed gitlink pointer was allowed to produce reusable evidence")
+	}
+	runEvidenceGit(t, repo.Root, "update-index", "--cacheinfo", "160000,"+firstCommit+",vendor/lib")
+}
+
+func TestFingerprintAllowsUnrelatedGitlink(t *testing.T) {
+	repo := newEvidenceTestRepo(t)
+	writeEvidenceFile(t, filepath.Join(repo.Root, "docs", "guide.md"), "first\n")
+	runEvidenceGit(t, repo.Root, "add", ".")
+	runEvidenceGit(t, repo.Root, "commit", "-m", "docs")
+	firstCommit, secondCommit := addEvidenceGitlink(t, repo, "vendor/lib")
+
+	first, count, err := Fingerprint(repo, []string{"docs/**"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("unrelated-submodule fingerprint count = %d, want 1", count)
+	}
+	runEvidenceGit(t, repo.Root, "update-index", "--cacheinfo", "160000,"+secondCommit+",vendor/lib")
+	second, _, err := Fingerprint(repo, []string{"docs/**"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first != second {
+		t.Fatal("unrelated gitlink pointer invalidated docs-only fingerprint")
+	}
+	runEvidenceGit(t, repo.Root, "update-index", "--cacheinfo", "160000,"+firstCommit+",vendor/lib")
+}
+
+func TestFingerprintFailsClosedForUnmergedGitlink(t *testing.T) {
+	repo := newEvidenceTestRepo(t)
+	firstCommit, secondCommit := addEvidenceGitlink(t, repo, "vendor/lib")
+	runEvidenceGit(t, repo.Root, "update-index", "--force-remove", "vendor/lib")
+	indexInfo := "160000 " + firstCommit + " 1\tvendor/lib\n" +
+		"160000 " + firstCommit + " 2\tvendor/lib\n" +
+		"160000 " + secondCommit + " 3\tvendor/lib\n"
+	runEvidenceGitInput(t, repo.Root, indexInfo, "update-index", "--index-info")
+
+	if _, _, err := Fingerprint(repo, []string{"vendor/lib/**"}); err == nil || !strings.Contains(err.Error(), "submodule contents are not fingerprinted") {
+		t.Fatalf("unmerged gitlink error = %v, want fail-closed submodule error", err)
+	}
+}
+
 func TestReceiptBindingTracksOnlyRelevantContents(t *testing.T) {
 	repo := newEvidenceTestRepo(t)
 	writeEvidenceFile(t, filepath.Join(repo.Root, "src", "main.go"), "package main\n")
@@ -326,10 +387,40 @@ func newEvidenceTestRepo(t *testing.T) *repository.Repository {
 	return repo
 }
 
+func addEvidenceGitlink(t *testing.T, repo *repository.Repository, path string) (string, string) {
+	t.Helper()
+	writeEvidenceFile(t, filepath.Join(repo.Root, "gitlink-fixture.txt"), "first\n")
+	runEvidenceGit(t, repo.Root, "add", "gitlink-fixture.txt")
+	runEvidenceGit(t, repo.Root, "commit", "-m", "gitlink fixture one")
+	first, err := repo.Git("rev-parse", "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeEvidenceFile(t, filepath.Join(repo.Root, "gitlink-fixture.txt"), "second\n")
+	runEvidenceGit(t, repo.Root, "add", "gitlink-fixture.txt")
+	runEvidenceGit(t, repo.Root, "commit", "-m", "gitlink fixture two")
+	second, err := repo.Git("rev-parse", "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	runEvidenceGit(t, repo.Root, "update-index", "--add", "--cacheinfo", "160000,"+first+","+filepath.ToSlash(path))
+	return first, second
+}
+
 func runEvidenceGit(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
+	}
+}
+
+func runEvidenceGitInput(t *testing.T, dir, input string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	cmd.Stdin = strings.NewReader(input)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
 	}

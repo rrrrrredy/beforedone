@@ -71,11 +71,19 @@ func FingerprintContext(ctx context.Context, repo *repository.Repository, patter
 		}
 	}
 	indexModes := map[string]string{}
-	for _, batch := range ignoredPathspecBatches(patterns) {
-		args := []string{"ls-files", "--stage", "-z", "--"}
-		args = append(args, batch...)
-		if err := collectGitIndexModes(ctx, repo, args, matchers, indexModes, &listedBytes); err != nil {
-			return "", 0, fmt.Errorf("list relevant Git file modes: %w", err)
+	var gitlinks []string
+	if err := collectGitIndex(ctx, repo, matchers, indexModes, &gitlinks, &listedBytes); err != nil {
+		return "", 0, fmt.Errorf("list Git index entries: %w", err)
+	}
+	sort.Strings(gitlinks)
+	for _, gitlink := range gitlinks {
+		for i, pattern := range patterns {
+			if err := ctx.Err(); err != nil {
+				return "", 0, err
+			}
+			if patternMayCoverGitlink(pattern, matchers[i], gitlink) {
+				return "", 0, fmt.Errorf("relevant_files may include Git submodule %q; submodule contents are not fingerprinted", gitlink)
+			}
 		}
 	}
 	sort.Strings(files)
@@ -202,8 +210,8 @@ func collectGitFiles(ctx context.Context, repo *repository.Repository, args []st
 	return cmd.Wait()
 }
 
-func collectGitIndexModes(ctx context.Context, repo *repository.Repository, args []string, matchers []*regexp.Regexp, modes map[string]string, listedBytes *int64) error {
-	cmd := exec.CommandContext(ctx, "git", args...)
+func collectGitIndex(ctx context.Context, repo *repository.Repository, matchers []*regexp.Regexp, modes map[string]string, gitlinks *[]string, listedBytes *int64) error {
+	cmd := exec.CommandContext(ctx, "git", "ls-files", "--stage", "-z")
 	cmd.Dir = repo.Root
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -228,8 +236,13 @@ func collectGitIndexModes(ctx context.Context, repo *repository.Repository, args
 			if tab > 0 {
 				metadata := strings.Fields(string(raw[:tab]))
 				rel := filepath.ToSlash(string(raw[tab+1:]))
-				if len(metadata) == 3 && metadata[2] == "0" && matchesAny(matchers, rel) {
-					modes[rel] = metadata[0]
+				if len(metadata) == 3 {
+					if metadata[0] == "160000" {
+						*gitlinks = append(*gitlinks, rel)
+					}
+					if metadata[2] == "0" && matchesAny(matchers, rel) {
+						modes[rel] = metadata[0]
+					}
 				}
 			}
 		}
@@ -248,6 +261,23 @@ func collectGitIndexModes(ctx context.Context, repo *repository.Repository, args
 		}
 	}
 	return cmd.Wait()
+}
+
+func patternMayCoverGitlink(pattern string, matcher *regexp.Regexp, gitlink string) bool {
+	if matcher.MatchString(gitlink) {
+		return true
+	}
+	// A conservative prefix test keeps this fail-closed without modeling a
+	// second glob engine. It may reject some disjoint patterns, but it cannot
+	// omit a descendant whose path matches the configured glob.
+	pattern = filepath.ToSlash(strings.TrimSpace(pattern))
+	descendant := strings.TrimSuffix(gitlink, "/") + "/"
+	wildcard := strings.IndexAny(pattern, "*?")
+	if wildcard < 0 {
+		return strings.HasPrefix(pattern, descendant)
+	}
+	literalPrefix := pattern[:wildcard]
+	return strings.HasPrefix(descendant, literalPrefix) || strings.HasPrefix(literalPrefix, descendant)
 }
 
 func ignoredPathspecBatches(patterns []string) [][]string {

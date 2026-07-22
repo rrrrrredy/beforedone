@@ -122,7 +122,9 @@ Relevant globs also include matching Git-ignored files such as generated Go
 sources, and the fingerprint includes executable-mode changes. Git applies the
 ignored-file pathspec before BeforeDone streams results, with hard file-count,
 listing-size, and content-size limits; exceeding a limit fails closed instead
-of silently omitting evidence.
+of silently omitting evidence. Submodule contents are not fingerprinted in v1:
+if a `relevant_files` pattern may cover a Git submodule or a path below it, the
+check fails closed instead of issuing reusable evidence.
 
 ## 3. Choose one Codex integration
 
@@ -279,6 +281,9 @@ worktree:
 ```sh
 beforedone replay verify --check test --execute
 ```
+
+BeforeDone disables repository Git hooks while it creates that internal
+worktree. The configured verifier still runs normally after checkout.
 
 BeforeDone does not provide network isolation. A configured verifier can use
 the network, credentials, and other resources available to that process. Replay
