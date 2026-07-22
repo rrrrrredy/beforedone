@@ -664,6 +664,33 @@ func TestInconclusiveReceiptWarnsWithoutPretendingPassOrFail(t *testing.T) {
 	}
 }
 
+func TestStopGateRejectsReceiptAliasForDifferentCheck(t *testing.T) {
+	repo, cfg := newHookTestRepo(t, []string{"git", "status", "--short"})
+	result, err := checker.Run(repo, cfg, "unit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	result.Receipt.ID = "receipt-other"
+	result.Receipt.CheckID = "other"
+	if _, err := evidence.Save(repo, result.Receipt); err != nil {
+		t.Fatal(err)
+	}
+	otherLatest := filepath.Join(repo.RuntimeDir, "receipts", "latest-other.json")
+	data, err := os.ReadFile(otherLatest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unitLatest := filepath.Join(repo.RuntimeDir, "receipts", "latest-unit.json")
+	if err := os.WriteFile(unitLatest, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	output := runStopHook(t, repo.Root, false)
+	if output.Decision != "block" || !strings.Contains(output.Reason, "no evidence receipt") {
+		t.Fatalf("mismatched latest alias bypassed Stop gate: %+v", output)
+	}
+}
+
 func TestStopGateRejectsSignedPassWithNonzeroExit(t *testing.T) {
 	repo, cfg := newHookTestRepo(t, []string{"git", "status", "--short"})
 	if err := evidence.EnsureKey(repo); err != nil {

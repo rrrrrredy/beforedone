@@ -256,6 +256,34 @@ func TestLoadLatestRejectsCheckIDPathTraversal(t *testing.T) {
 	}
 }
 
+func TestLoadLatestRejectsReceiptForDifferentCheck(t *testing.T) {
+	repo := newEvidenceTestRepo(t)
+	writeEvidenceFile(t, filepath.Join(repo.Root, "main.go"), "package main\n")
+	runEvidenceGit(t, repo.Root, "add", ".")
+	runEvidenceGit(t, repo.Root, "commit", "-m", "fixture")
+	cfg := evidenceTestConfig([]string{"**/*.go"})
+	receipt := validEvidenceReceipt(t, repo, cfg, model.Pass, 0)
+	receipt.ID = "receipt-other"
+	receipt.CheckID = "other"
+	if _, err := Save(repo, receipt); err != nil {
+		t.Fatal(err)
+	}
+
+	otherLatest := filepath.Join(repo.RuntimeDir, "receipts", "latest-other.json")
+	data, err := os.ReadFile(otherLatest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unitLatest := filepath.Join(repo.RuntimeDir, "receipts", "latest-unit.json")
+	if err := os.WriteFile(unitLatest, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if loaded, err := LoadLatest(repo, "unit"); err == nil || !strings.Contains(err.Error(), "does not match requested check") {
+		t.Fatalf("LoadLatest(unit) = receipt=%v err=%v, want check-id mismatch rejection", loaded, err)
+	}
+}
+
 func TestLoadLatestRejectsTrailingJSON(t *testing.T) {
 	repo := newEvidenceTestRepo(t)
 	writeEvidenceFile(t, filepath.Join(repo.Root, "main.go"), "package main\n")
@@ -317,6 +345,41 @@ func TestReceiptLogSymlinkCannotEscapeRuntime(t *testing.T) {
 	if fresh, reason := ValidateFresh(repo, cfg, receipt); fresh {
 		t.Fatalf("receipt log symlink escaped runtime and was accepted (reason=%q)", reason)
 	}
+}
+
+func TestReceiptLogDeletionOrReplacementInvalidatesEvidence(t *testing.T) {
+	newFixture := func(t *testing.T) (*repository.Repository, model.Config, *model.Receipt, string) {
+		t.Helper()
+		repo := newEvidenceTestRepo(t)
+		writeEvidenceFile(t, filepath.Join(repo.Root, "main.go"), "package main\n")
+		runEvidenceGit(t, repo.Root, "add", ".")
+		runEvidenceGit(t, repo.Root, "commit", "-m", "fixture")
+		cfg := evidenceTestConfig([]string{"**/*.go"})
+		receipt := validEvidenceReceipt(t, repo, cfg, model.Pass, 0)
+		logPath := filepath.Join(repo.RuntimeDir, filepath.FromSlash(receipt.LogPath))
+		if fresh, reason := ValidateFresh(repo, cfg, receipt); !fresh {
+			t.Fatalf("fixture receipt is not fresh: %s", reason)
+		}
+		return repo, cfg, receipt, logPath
+	}
+
+	t.Run("deleted", func(t *testing.T) {
+		repo, cfg, receipt, logPath := newFixture(t)
+		if err := os.Remove(logPath); err != nil {
+			t.Fatal(err)
+		}
+		if fresh, reason := ValidateFresh(repo, cfg, receipt); fresh || !strings.Contains(reason, "receipt log") {
+			t.Fatalf("deleted receipt log = fresh %t reason %q, want invalid evidence", fresh, reason)
+		}
+	})
+
+	t.Run("replaced", func(t *testing.T) {
+		repo, cfg, receipt, logPath := newFixture(t)
+		writeEvidenceFile(t, logPath, "[stdout]\nreplacement\n[stderr]\n\n")
+		if fresh, reason := ValidateFresh(repo, cfg, receipt); fresh || !strings.Contains(reason, "hash does not match") {
+			t.Fatalf("replaced receipt log = fresh %t reason %q, want hash mismatch", fresh, reason)
+		}
+	})
 }
 
 func validEvidenceReceipt(t *testing.T, repo *repository.Repository, cfg model.Config, verdict model.Verdict, exitCode int) *model.Receipt {

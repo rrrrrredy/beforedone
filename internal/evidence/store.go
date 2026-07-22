@@ -193,7 +193,14 @@ func LoadLatest(repo *repository.Repository, checkID string) (*model.Receipt, er
 		if !safeToken(checkID, 64) {
 			return nil, fmt.Errorf("invalid check id %q", checkID)
 		}
-		return loadReceipt(filepath.Join(repo.RuntimeDir, "receipts", "latest-"+checkID+".json"))
+		receipt, err := loadReceipt(filepath.Join(repo.RuntimeDir, "receipts", "latest-"+checkID+".json"))
+		if err != nil {
+			return nil, err
+		}
+		if receipt.CheckID != checkID {
+			return nil, fmt.Errorf("receipt check id %q does not match requested check %q", receipt.CheckID, checkID)
+		}
+		return receipt, nil
 	}
 	entries, err := os.ReadDir(filepath.Join(repo.RuntimeDir, "receipts"))
 	if err != nil {
