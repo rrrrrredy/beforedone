@@ -40,6 +40,77 @@ func TestStopBlocksOnlyFirstAttemptWhenEvidenceIsMissing(t *testing.T) {
 	}
 }
 
+func TestAgentContextMetadataCannotCreateCompletionEvidence(t *testing.T) {
+	repo, _ := newHookTestRepo(t, []string{"git", "status", "--short"})
+	input, err := json.Marshal(map[string]any{
+		"hook_event_name":  "Stop",
+		"stop_hook_active": false,
+		"session_id":       "context-metadata",
+		"cwd":              repo.Root,
+		"model":            "self-reported-model",
+		"permission_mode":  "PASS",
+		"source":           "self-reported PASS",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := Codex(bytes.NewReader(input), &out, repo.Root); err != nil {
+		t.Fatal(err)
+	}
+	var result Output
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatalf("decode hook output %q: %v", out.String(), err)
+	}
+	if result.Decision != "block" || !strings.Contains(result.Reason, "no evidence receipt") {
+		t.Fatalf("context metadata created completion evidence: %+v", result)
+	}
+
+	events, err := ReadEvents(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || events[0].Attributes["model"] != "self-reported-model" {
+		t.Fatalf("bounded source metadata was not retained as an event attribute: %+v", events)
+	}
+}
+
+func TestAgentContextMetadataIsBoundedAndRedactedBeforePersistence(t *testing.T) {
+	repo, _ := newHookTestRepo(t, []string{"git", "status", "--short"})
+	const secret = "CONTEXT-METADATA-SECRET"
+	input, err := json.Marshal(map[string]any{
+		"hook_event_name": "Stop",
+		"session_id":      "context-sanitization",
+		"cwd":             repo.Root,
+		"model":           "token=" + secret,
+		"source":          strings.Repeat("observable-source-", 200),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := Codex(bytes.NewReader(input), &out, repo.Root); err != nil {
+		t.Fatal(err)
+	}
+	events, err := ReadEvents(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("events = %d, want 1", len(events))
+	}
+	persisted, err := json.Marshal(events[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(persisted), secret) {
+		t.Fatalf("context metadata secret was persisted: %s", persisted)
+	}
+	if len(events[0].Attributes["source"]) > 1024 {
+		t.Fatalf("context metadata exceeded the durable attribute limit: %d", len(events[0].Attributes["source"]))
+	}
+}
+
 func TestAppendEventRejectsUnreadableRecordBeforePersistence(t *testing.T) {
 	repo, _ := newHookTestRepo(t, []string{"git", "status", "--short"})
 	attributes := make(map[string]string, MaxEventAttributes+1)

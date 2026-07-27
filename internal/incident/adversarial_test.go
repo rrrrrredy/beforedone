@@ -93,6 +93,26 @@ func TestFirstObservableDivergencePrecisions(t *testing.T) {
 	})
 }
 
+func TestContextMetadataCannotManufactureIncidentDivergence(t *testing.T) {
+	one := 1
+	events := []model.Event{{
+		ID:         "context-only",
+		Type:       model.ToolFinished,
+		ExitCode:   &one,
+		OccurredAt: time.Unix(20, 0),
+		Summary:    "adapter supplied context",
+		Attributes: map[string]string{
+			"model":                       "self-reported-model",
+			"instruction_manifest_sha256": "sha256:" + strings.Repeat("a", 64),
+			"source_confidence":           "self-reported",
+		},
+	}}
+	got := locateDivergence(events, nil)
+	if got.Precision != model.Unlocated || got.EventID != "" || got.StartEvent != "" || got.EndEvent != "" {
+		t.Fatalf("context metadata manufactured a divergence: %+v", got)
+	}
+}
+
 func TestIncidentVerdictPrecedenceIsOrderIndependent(t *testing.T) {
 	permutations := [][]model.Verdict{
 		{model.Pass, model.Inconclusive, model.Fail},

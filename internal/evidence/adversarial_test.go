@@ -216,6 +216,88 @@ func TestReceiptBindingTracksOnlyRelevantContents(t *testing.T) {
 	}
 }
 
+func TestReceiptBindingTracksMaterialVerifierContractNotAgentContext(t *testing.T) {
+	repo := newEvidenceTestRepo(t)
+	writeEvidenceFile(t, filepath.Join(repo.Root, "src", "main.go"), "package main\n")
+	writeEvidenceFile(t, filepath.Join(repo.Root, "AGENTS.md"), "initial agent instructions\n")
+	runEvidenceGit(t, repo.Root, "add", ".")
+	runEvidenceGit(t, repo.Root, "commit", "-m", "fixture")
+
+	cfg := evidenceTestConfig([]string{"src/**"})
+	receipt := validEvidenceReceipt(t, repo, cfg, model.Pass, 0)
+
+	t.Run("unrelated Agent instructions do not invalidate evidence", func(t *testing.T) {
+		writeEvidenceFile(t, filepath.Join(repo.Root, "AGENTS.md"), "changed agent instructions\n")
+		if fresh, reason := ValidateFresh(repo, cfg, receipt); !fresh {
+			t.Fatalf("unrelated Agent context invalidated PASS: %s", reason)
+		}
+	})
+
+	t.Run("argv change invalidates evidence", func(t *testing.T) {
+		changed := cfg
+		changed.Checks = map[string]model.CheckConfig{"unit": cfg.Checks["unit"]}
+		check := changed.Checks["unit"]
+		check.Argv = []string{"go", "test", "./src/..."}
+		changed.Checks["unit"] = check
+		if fresh, reason := ValidateFresh(repo, changed, receipt); fresh || !strings.Contains(reason, "argv changed") {
+			t.Fatalf("argv change = fresh %t reason %q, want stale evidence", fresh, reason)
+		}
+	})
+
+	t.Run("working directory change invalidates evidence", func(t *testing.T) {
+		changed := cfg
+		changed.Checks = map[string]model.CheckConfig{"unit": cfg.Checks["unit"]}
+		check := changed.Checks["unit"]
+		check.WorkingDirectory = "src"
+		changed.Checks["unit"] = check
+		if fresh, reason := ValidateFresh(repo, changed, receipt); fresh || !strings.Contains(reason, "working directory changed") {
+			t.Fatalf("working-directory change = fresh %t reason %q, want stale evidence", fresh, reason)
+		}
+	})
+
+	t.Run("relevant scope change invalidates evidence even for the same matched file", func(t *testing.T) {
+		changed := cfg
+		changed.Checks = map[string]model.CheckConfig{"unit": cfg.Checks["unit"]}
+		check := changed.Checks["unit"]
+		check.RelevantFiles = []string{"src/**/*.go"}
+		changed.Checks["unit"] = check
+		if fresh, reason := ValidateFresh(repo, changed, receipt); fresh || !strings.Contains(reason, "relevant files changed") {
+			t.Fatalf("relevant scope change = fresh %t reason %q, want stale evidence", fresh, reason)
+		}
+	})
+
+	t.Run("timeout metadata does not invalidate an observed pass", func(t *testing.T) {
+		changed := cfg
+		changed.Checks = map[string]model.CheckConfig{"unit": cfg.Checks["unit"]}
+		check := changed.Checks["unit"]
+		check.TimeoutSeconds = 1
+		changed.Checks["unit"] = check
+		if fresh, reason := ValidateFresh(repo, changed, receipt); !fresh {
+			t.Fatalf("non-binding timeout metadata invalidated PASS: %s", reason)
+		}
+	})
+}
+
+func TestReceiptSignatureUsesTheRepositoryLocalRuntimeKey(t *testing.T) {
+	source := newEvidenceTestRepo(t)
+	writeEvidenceFile(t, filepath.Join(source.Root, "src", "main.go"), "package main\n")
+	runEvidenceGit(t, source.Root, "add", ".")
+	runEvidenceGit(t, source.Root, "commit", "-m", "source")
+	cfg := evidenceTestConfig([]string{"src/**"})
+	receipt := validEvidenceReceipt(t, source, cfg, model.Pass, 0)
+
+	other := newEvidenceTestRepo(t)
+	writeEvidenceFile(t, filepath.Join(other.Root, "src", "main.go"), "package main\n")
+	runEvidenceGit(t, other.Root, "add", ".")
+	runEvidenceGit(t, other.Root, "commit", "-m", "other")
+	if err := EnsureKey(other); err != nil {
+		t.Fatal(err)
+	}
+	if fresh, reason := ValidateFresh(other, cfg, receipt); fresh || !strings.Contains(reason, "signature does not match") {
+		t.Fatalf("cross-repository receipt = fresh %t reason %q, want local-key rejection", fresh, reason)
+	}
+}
+
 func TestForgedPassWithNonzeroExitIsRejected(t *testing.T) {
 	repo := newEvidenceTestRepo(t)
 	writeEvidenceFile(t, filepath.Join(repo.Root, "main.go"), "package main\n")
