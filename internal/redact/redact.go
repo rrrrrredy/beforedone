@@ -13,6 +13,12 @@ import (
 var (
 	percentAssignment = regexp.MustCompile(`(?i)(?:%22|%27|\\+["']|["'])*(?:api(?:%5f|_|-)?key|access(?:%5f|_|-)?token|refresh(?:%5f|_|-)?token|token|password|passwd|secret|authorization|auth|private(?:%5f|_|-)?key|credential)(?:%22|%27|\\+["']|["'])*(?:%3a|%3d)(?:%22|%27|\\+["']|["'])*[^\s&]+`)
 	openAIKey         = regexp.MustCompile(`\bsk-[A-Za-z0-9_-]{12,}\b`)
+	privateKeyBlock   = regexp.MustCompile(`(?is)-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----.*?-----END (?:[A-Z0-9]+ )*PRIVATE KEY-----`)
+	credentialURI     = regexp.MustCompile(`(?i)\b[a-z][a-z0-9+.-]*://[^\s/:@]+:[^\s/@]+@[^\s]+`)
+	githubToken       = regexp.MustCompile(`\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b`)
+	slackToken        = regexp.MustCompile(`\bxox[baprs]-[A-Za-z0-9_-]{10,}\b`)
+	googleAPIKey      = regexp.MustCompile(`\bAIza[A-Za-z0-9_-]{20,}\b`)
+	awsAccessKeyID    = regexp.MustCompile(`\b(?:AKIA|ASIA)[A-Z0-9]{16}\b`)
 )
 
 // Compile validates repository-configured regexes. Built-in structured
@@ -35,9 +41,15 @@ func Compile(patterns []string) ([]*regexp.Regexp, error) {
 // regexes. It prefers over-redaction to retaining a credential suffix.
 func Apply(value string, configured []*regexp.Regexp) string {
 	value = normalizeControls(value)
+	value = privateKeyBlock.ReplaceAllString(value, "[REDACTED]")
 	value = redactAssignments(value)
 	value = percentAssignment.ReplaceAllString(value, "[REDACTED]")
+	value = credentialURI.ReplaceAllString(value, "[REDACTED]")
 	value = openAIKey.ReplaceAllString(value, "[REDACTED]")
+	value = githubToken.ReplaceAllString(value, "[REDACTED]")
+	value = slackToken.ReplaceAllString(value, "[REDACTED]")
+	value = googleAPIKey.ReplaceAllString(value, "[REDACTED]")
+	value = awsAccessKeyID.ReplaceAllString(value, "[REDACTED]")
 	for _, redactor := range configured {
 		value = redactor.ReplaceAllString(value, "[REDACTED]")
 	}
@@ -230,7 +242,7 @@ func normalizeIdentifier(value string) string {
 func isSensitiveName(value string) bool {
 	compact := strings.NewReplacer("_", "", "-", "").Replace(strings.ToLower(value))
 	for _, marker := range []string{
-		"apikey", "accesstoken", "refreshtoken", "token", "password", "passwd",
+		"apikey", "accesskey", "accesstoken", "refreshtoken", "token", "password", "passwd",
 		"secret", "authorization", "privatekey", "credential",
 	} {
 		if strings.Contains(compact, marker) {
@@ -332,11 +344,11 @@ func unquotedEnd(value string, start int) int {
 	i := start
 	for i < len(value) {
 		switch value[i] {
-		// A credential can legally contain commas, semicolons, braces, or
-		// brackets. Stopping at those characters leaks a suffix. Whitespace and
-		// the query-string '&' separator are the only safe generic boundaries
-		// for an unquoted assignment; over-redaction is intentional.
-		case ' ', '\t', '\r', '\n', '&':
+		// An unquoted credential can legally contain punctuation and spaces.
+		// Only a physical line boundary or query-string '&' is a safe generic
+		// boundary. Redacting the remainder of a line is preferable to retaining
+		// a credential suffix.
+		case '\r', '\n', '&':
 			return i
 		default:
 			i++

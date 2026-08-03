@@ -71,7 +71,7 @@ verify it against `checksums.txt`, and put the `beforedone` executable on
 `PATH`.
 
 To install a reproducible version with Go, replace `@latest` with a release tag,
-for example `@v1.0.1`.
+for example `@v1.0.2`.
 
 ## 2. Initialize a repository
 
@@ -231,8 +231,8 @@ $skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skill
 $skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skills/investigate-agent-incident
 ```
 
-The skills become available on the next Codex turn. To pin them to v1.0.1,
-replace `/tree/main/` with `/tree/v1.0.1/` in both URLs.
+The skills become available on the next Codex turn. To pin them to v1.0.2,
+replace `/tree/main/` with `/tree/v1.0.2/` in both URLs.
 
 You can also install both through the third-party `skills.sh` CLI. BeforeDone
 itself has no telemetry, but `skills.sh` is a separate tool and may collect its
@@ -379,10 +379,12 @@ the working tree. They include:
 
 BeforeDone applies built-in secret patterns plus `capture.redact_patterns` and
 size limits before persisting captured check output, event summaries, replay
-output, user corrections, and the optional transcript excerpt. Redaction is
-best effort, not a guarantee. It does not rewrite receipt argv or path metadata;
-never put credentials in command-line arguments, and review artifacts before
-sharing them.
+output, user corrections, and the optional transcript excerpt. Built-ins cover
+sensitive assignments, common OpenAI/GitHub/Slack/Google token forms, AWS access
+key IDs, PEM private-key blocks, and credential-bearing URIs. Redaction remains
+best effort, not a guarantee, and cannot cover every provider or encoding. It
+does not rewrite receipt argv or path metadata; never put credentials in
+command-line arguments, and review artifacts before sharing them.
 
 `reports.retain` prunes older incident directories after a new incident is
 created. In v1 it does not automatically prune receipts, logs, or the event

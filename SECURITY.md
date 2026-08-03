@@ -101,7 +101,9 @@ participates in First Observable Divergence. BeforeDone accepts at most 4 MiB,
 applies redaction, and persists only a 16 KiB narrative excerpt plus a SHA-256
 digest and truncation flag—not the raw transcript. Built-in secret patterns,
 configured `capture.redact_patterns`, and output size limits are applied before
-supported captured fields are persisted. Normalized events are limited to 256
+supported captured fields are persisted. Built-ins cover sensitive assignments,
+common OpenAI/GitHub/Slack/Google token forms, AWS access key IDs, PEM
+private-key blocks, and credential-bearing URIs. Normalized events are limited to 256
 attributes and 1 MiB after JSON encoding. Event-ledger reads fail closed above
 64 MiB instead of silently ignoring a truncated tail. Event writes are
 serialized with an operating-system file lock. Each batch is committed as an
@@ -124,8 +126,9 @@ directory-entry flush remains an operating-system durability boundary.
 The immutable create-if-absent commit requires same-directory hard-link support;
 on Windows, this means the Git directory must be on NTFS rather than FAT/exFAT.
 
-Redaction is best effort. It cannot guarantee detection of every credential,
-personal detail, proprietary value, encoded secret, or sensitive filename.
+Redaction is best effort. The built-ins do not cover every provider or encoding,
+and cannot guarantee detection of every credential, personal detail,
+proprietary value, encoded secret, or sensitive filename.
 Receipts intentionally preserve actual verifier argv and working-directory
 metadata; output redaction does not rewrite those structural fields. Never put
 credentials in command-line arguments, prefer environment-based or native

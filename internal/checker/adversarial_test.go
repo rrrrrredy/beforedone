@@ -43,6 +43,30 @@ func TestCheckLogRedactsQuotedCredentialDelimiterTails(t *testing.T) {
 	}
 }
 
+func TestCheckLogRedactsCommonCredentialFormats(t *testing.T) {
+	repo := newCheckerTestRepo(t)
+	cfg := checkerTestConfig(helperArgv("print-common-credentials"))
+	result, err := Run(repo, cfg, "unit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	logData, err := os.ReadFile(filepath.Join(repo.RuntimeDir, filepath.FromSlash(result.Receipt.LogPath)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored := string(logData)
+	credentials := commonCredentialFixtures()
+	leaks := append([]string{strings.Repeat("Z", 40)}, credentials[1:]...)
+	for _, secret := range leaks {
+		if strings.Contains(stored, secret) {
+			t.Fatal("check log retained a common credential format")
+		}
+	}
+	if !strings.Contains(stored, "CHECK-SAFE-MARKER") {
+		t.Fatalf("redaction removed unrelated following-line output: %q", stored)
+	}
+}
+
 func TestOutputContainingPASSCannotOverrideNonzeroExit(t *testing.T) {
 	repo := newCheckerTestRepo(t)
 	argv := helperArgv("print-pass-and-fail")
@@ -124,6 +148,17 @@ func TestAdversarialHelperProcess(t *testing.T) {
 		fmt.Fprintln(os.Stdout, `%22token%22%3D%22CHECK-PERCENT-LEAK%22`)
 		fmt.Fprintln(os.Stdout, `{"pass\u0077ord":"CHECK-UNICODE-LEAK"}`)
 		os.Exit(0)
+	case "print-common-credentials":
+		credentials := commonCredentialFixtures()
+		fmt.Fprintln(os.Stdout, credentials[0])
+		fmt.Fprintln(os.Stdout, credentials[1])
+		fmt.Fprintln(os.Stdout, credentials[2])
+		fmt.Fprintln(os.Stdout, credentials[3])
+		fmt.Fprintln(os.Stdout, credentials[4])
+		fmt.Fprintln(os.Stdout, "postgres://alice:"+credentials[5]+"@localhost/example")
+		fmt.Fprintln(os.Stdout, "password="+credentials[6])
+		fmt.Fprintln(os.Stdout, "CHECK-SAFE-MARKER")
+		os.Exit(0)
 	case "mutate-and-pass":
 		if separator+2 >= len(os.Args) {
 			os.Exit(97)
@@ -135,6 +170,18 @@ func TestAdversarialHelperProcess(t *testing.T) {
 		os.Exit(0)
 	default:
 		os.Exit(99)
+	}
+}
+
+func commonCredentialFixtures() []string {
+	return []string{
+		"-----BEGIN " + "PRIVATE KEY-----\n" + strings.Repeat("Z", 40) + "\n-----END " + "PRIVATE KEY-----",
+		"gh" + "p_" + strings.Repeat("A", 36),
+		"xo" + "xb-" + strings.Repeat("1", 11) + "-" + strings.Repeat("C", 24),
+		"AI" + "za" + strings.Repeat("D", 35),
+		"AK" + "IA" + strings.Repeat("E", 16),
+		"CHECK-DB-PASSWORD",
+		"correct horse battery CHECK-PASSWORD-TAIL",
 	}
 }
 

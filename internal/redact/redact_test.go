@@ -6,6 +6,12 @@ import (
 )
 
 func TestDefaultPatternsCoverCommonStructuredAndEncodedAssignments(t *testing.T) {
+	githubClassic := "gh" + "p_" + strings.Repeat("A", 36)
+	githubFineGrained := "github_" + "pat_" + strings.Repeat("B", 24)
+	slack := "xo" + "xb-" + strings.Repeat("1", 11) + "-" + strings.Repeat("C", 24)
+	google := "AI" + "za" + strings.Repeat("D", 35)
+	aws := "AK" + "IA" + strings.Repeat("E", 16)
+	pem := "-----BEGIN " + "PRIVATE KEY-----\n" + strings.Repeat("Z", 40) + "\n-----END " + "PRIVATE KEY-----"
 	cases := []struct {
 		name  string
 		value string
@@ -18,6 +24,7 @@ func TestDefaultPatternsCoverCommonStructuredAndEncodedAssignments(t *testing.T)
 		{"multiply escaped json", `{\\\"password\\\":\\\"multiply-escaped-secret\\\"}`, "multiply-escaped-secret"},
 		{"escaped quote in value", `{\"password\":\"prefix-secret\\\"suffix-secret\"}`, "suffix-secret"},
 		{"quoted value with spaces", `token='two word secret'`, "word secret"},
+		{"unquoted value with spaces", "password=correct horse battery staple\nstatus=safe", "horse battery staple"},
 		{"comma in quoted value", `{"password":"prefix,comma-tail-secret"}`, "comma-tail-secret"},
 		{"semicolon in quoted value", `{'token':'prefix;semicolon-tail-secret'}`, "semicolon-tail-secret"},
 		{"brace in quoted value", `{"secret":"prefix}brace-tail-secret"}`, "brace-tail-secret"},
@@ -42,6 +49,14 @@ func TestDefaultPatternsCoverCommonStructuredAndEncodedAssignments(t *testing.T)
 		{"digest authorization after structured secret", "{\"password\":\"prefix,earlier-secret\"}\r\nAuthorization: Digest username=\"alice\", response=\"DIGEST-AFTER-SECRET-42\"\r\n", "DIGEST-AFTER-SECRET-42"},
 		{"aws authorization", `Authorization: AWS4-HMAC-SHA256 Credential=AKIAEXAMPLE/aws4_request, SignedHeaders=host;x-amz-date, Signature=AWS-SIGNATURE-SECRET-42`, "AWS-SIGNATURE-SECRET-42"},
 		{"openai key", `sk-abcdefghijklmnopqrstuvwx`, "sk-abcdefghijklmnopqrstuvwx"},
+		{"PEM private key", pem, strings.Repeat("Z", 40)},
+		{"GitHub classic token", githubClassic, githubClassic},
+		{"GitHub fine-grained token", githubFineGrained, githubFineGrained},
+		{"Slack token", slack, slack},
+		{"Google API key", google, google},
+		{"AWS access key ID", aws, aws},
+		{"AWS access key assignment", "aws_access_key_id=" + aws, aws},
+		{"credential URI", `postgres://alice:db-password@localhost:5432/example`, "db-password"},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -54,7 +69,7 @@ func TestDefaultPatternsCoverCommonStructuredAndEncodedAssignments(t *testing.T)
 }
 
 func TestSensitiveLabelRecognizesCredentialFields(t *testing.T) {
-	for _, value := range []string{"password", "pass\x00word", "api_key", "Authorization", "auth_token"} {
+	for _, value := range []string{"password", "pass\x00word", "api_key", "aws_access_key_id", "Authorization", "auth_token"} {
 		if !SensitiveLabel(value) {
 			t.Fatalf("SensitiveLabel(%q) = false", value)
 		}
@@ -68,5 +83,12 @@ func TestRedactionPreservesWindowsDiagnosticPaths(t *testing.T) {
 	value := `open D:\Codex\_tmp\go-build123\b001\beforedone-demo.test.exe and C:\new\folder: Access is denied`
 	if got := Apply(value, nil); got != value {
 		t.Fatalf("Windows path changed during redaction:\n got: %q\nwant: %q", got, value)
+	}
+}
+
+func TestRedactionPreservesOrdinaryURLsWithoutCredentials(t *testing.T) {
+	value := "docs: https://example.com/path?q=safe and postgres://localhost/example"
+	if got := Apply(value, nil); got != value {
+		t.Fatalf("ordinary URLs changed during redaction:\n got: %q\nwant: %q", got, value)
 	}
 }
