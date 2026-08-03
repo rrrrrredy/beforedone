@@ -10,6 +10,16 @@ events and artifacts.
 
 [Website and guide](https://rrrrrredy.github.io/beforedone/)
 
+## Evidence and technical report
+
+The empirical technical report freezes the protocol, 144-run dataset,
+analysis, and reproducibility artifact. Every condition observed 0/60
+unsupported completions in the claim-supportable subset, so the report makes
+no superiority claim; it documents the mechanism, auditability, and measured
+verifier cost.
+
+[Read the report and artifact](https://doi.org/10.5281/zenodo.21766277)
+
 ## One product, three delivery forms
 
 - **CLI:** the source of truth for checks, receipts, incidents, replay, and
