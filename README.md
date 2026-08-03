@@ -18,6 +18,11 @@ unsupported completions in the claim-supportable subset, so the report makes
 no superiority claim; it documents the mechanism, auditability, and measured
 verifier cost.
 
+[The separate `beforedone-paper` repository](https://github.com/rrrrrredy/beforedone-paper)
+contains the full protocol, run records, analysis code, and report sources. This
+keeps the product checkout focused on the CLI and preserves the study against
+the exact implementation it evaluated.
+
 [Read the report and artifact](https://doi.org/10.5281/zenodo.21766277)
 
 ## One product, three delivery forms
@@ -392,9 +397,11 @@ for the separate website and third-party-tool boundaries.
 
 ## Security and trust boundary
 
-BeforeDone is designed to prevent non-adversarial early completion and reuse of
-stale evidence. It is not a security boundary against a malicious process with
-the same operating-system identity and repository write access.
+BeforeDone is designed to catch missing or stale verifier evidence at a
+cooperative or fallible Agent's first Stop attempt, reducing the risk of
+unsupported early completion. It is not a security boundary against a
+malicious process with the same operating-system identity and repository write
+access.
 
 Such a process can read or replace `.git/beforedone/receipt.key`, edit
 `.beforedone.yaml`, alter runtime artifacts, or run a trivially passing allowed
