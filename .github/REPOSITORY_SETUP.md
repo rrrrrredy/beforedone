@@ -54,5 +54,5 @@ gh attestation verify PATH_TO_DOWNLOADED_ARCHIVE --repo rrrrrredy/beforedone
 
 Manual no-Actions releases do not claim GitHub OIDC provenance; their public
 verification boundary is the tag, release asset matrix, checksums, SBOMs, and
-the documented local quality-gate record. The current v1.0.1 record is
-[`docs/releases/v1.0.1-release-evidence.md`](../docs/releases/v1.0.1-release-evidence.md).
+the documented local quality-gate record. The current v1.0.2 record is
+[`docs/releases/v1.0.2-release-evidence.md`](../docs/releases/v1.0.2-release-evidence.md).
