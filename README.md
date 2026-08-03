@@ -12,8 +12,10 @@ events and artifacts.
 
 ## Evidence and technical report
 
-The empirical technical report freezes the protocol, 144-run dataset,
-analysis, and reproducibility artifact. Every condition observed 0/60
+The empirical technical report freezes the protocol, 144 eligible confirmatory
+outcomes, analysis, and reproducibility artifact. One superseded attempt that
+produced no outcome is retained for audit and excluded from all effectiveness
+denominators. Every condition observed 0/60
 unsupported completions in the claim-supportable subset, so the report makes
 no superiority claim; it documents the mechanism, auditability, and measured
 verifier cost.
