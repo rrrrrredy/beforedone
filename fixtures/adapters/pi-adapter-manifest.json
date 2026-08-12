@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "name": "pi",
+  "version": "1.0.0",
+  "capabilities": {
+    "tool_events": true,
+    "stop_retry": true,
+    "subagents": false,
+    "transcript": false
+  },
+  "event_map": {
+    "session_start": "SessionStarted",
+    "input": "PromptSubmitted",
+    "tool_execution_start": "ToolStarted",
+    "tool_execution_end": "ToolFinished",
+    "agent_settled": "AgentStopping",
+    "session_shutdown": "SessionEnded"
+  }
+}

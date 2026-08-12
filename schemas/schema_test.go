@@ -17,6 +17,7 @@ func TestPublicSchemasCompileAndEnforceConditionalContracts(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
 	names := []string{
 		"event.schema.json",
+		"gate.schema.json",
 		"receipt.schema.json",
 		"incident.schema.json",
 		"replay-case.schema.json",
@@ -83,6 +84,25 @@ func TestPublicSchemasCompileAndEnforceConditionalContracts(t *testing.T) {
 	event := validEvent(256)
 	assertValid(t, compiled["event.schema.json"], event)
 	assertInvalid(t, compiled["event.schema.json"], validEvent(257))
+
+	gate := map[string]any{
+		"schema_version": 1, "decision": "block", "verdict": "INCONCLUSIVE",
+		"reason": "missing evidence", "checks": []any{},
+	}
+	assertValid(t, compiled["gate.schema.json"], gate)
+	missingBlockReason := clone(gate)
+	delete(missingBlockReason, "reason")
+	assertInvalid(t, compiled["gate.schema.json"], missingBlockReason)
+	failedAllow := clone(gate)
+	failedAllow["decision"] = "allow"
+	failedAllow["verdict"] = "FAIL"
+	delete(failedAllow, "reason")
+	assertInvalid(t, compiled["gate.schema.json"], failedAllow)
+	warning := clone(gate)
+	warning["decision"] = "allow"
+	warning["system_message"] = "verification was inconclusive"
+	delete(warning, "reason")
+	assertValid(t, compiled["gate.schema.json"], warning)
 }
 
 func validReceipt() map[string]any {

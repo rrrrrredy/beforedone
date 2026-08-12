@@ -15,6 +15,7 @@ import (
 	"github.com/rrrrrredy/beforedone/internal/checker"
 	"github.com/rrrrrredy/beforedone/internal/config"
 	"github.com/rrrrrredy/beforedone/internal/evidence"
+	stopgate "github.com/rrrrrredy/beforedone/internal/gate"
 	"github.com/rrrrrredy/beforedone/internal/hooks"
 	"github.com/rrrrrredy/beforedone/internal/incident"
 	"github.com/rrrrrredy/beforedone/internal/model"
@@ -66,6 +67,8 @@ func (a *App) Run(args []string) int {
 		return a.check(args[1:])
 	case "receipt":
 		return a.receipt(args[1:])
+	case "gate":
+		return a.gate(args[1:])
 	case "incident":
 		return a.incident(args[1:])
 	case "replay":
@@ -165,13 +168,19 @@ func (a *App) doctor(args []string) int {
 	} else {
 		checks = append(checks, doctorCheck{"codex-hooks", model.Inconclusive, "optional: run `beforedone setup codex`"})
 	}
+	piPath := filepath.Join(repo.Root, ".pi", "extensions", "beforedone.ts")
+	if data, err := os.ReadFile(piPath); err == nil && setup.IsGeneratedPiExtension(data) {
+		checks = append(checks, doctorCheck{"pi-extension", model.Pass, piPath})
+	} else {
+		checks = append(checks, doctorCheck{"pi-extension", model.Inconclusive, "optional: run `beforedone setup pi`"})
+	}
 	return a.outputDoctor(jsonOutput, checks)
 }
 
 func (a *App) outputDoctor(jsonOutput bool, checks []doctorCheck) int {
 	overall := model.Pass
 	for _, check := range checks {
-		if check.Verdict != model.Pass && !strings.HasPrefix(check.Name, "codex-hooks") {
+		if check.Verdict != model.Pass && !strings.HasPrefix(check.Name, "codex-hooks") && !strings.HasPrefix(check.Name, "pi-extension") {
 			overall = model.Inconclusive
 		}
 	}
@@ -188,34 +197,70 @@ func (a *App) outputDoctor(jsonOutput bool, checks []doctorCheck) int {
 }
 
 func (a *App) setup(args []string) int {
-	if len(args) == 0 || args[0] != "codex" {
-		return a.usageError("usage: beforedone setup codex [--remove] [--json]")
+	if len(args) == 0 || (args[0] != "codex" && args[0] != "pi") {
+		return a.usageError("usage: beforedone setup <codex|pi> [--remove] [--json]")
 	}
+	target := args[0]
 	jsonOutput, rest := consumeBool(args[1:], "--json")
 	remove, rest := consumeBool(rest, "--remove")
 	if len(rest) != 0 {
-		return a.usageError("usage: beforedone setup codex [--remove] [--json]")
+		return a.usageError("usage: beforedone setup <codex|pi> [--remove] [--json]")
 	}
 	repo, code := a.repo()
 	if code != ExitOK {
 		return code
 	}
 	if remove {
-		result, err := setup.RemoveCodex(repo)
+		if target == "codex" {
+			result, err := setup.RemoveCodex(repo)
+			if err != nil {
+				return a.internal(err)
+			}
+			if jsonOutput {
+				a.writeJSON(result)
+			} else if len(result.RemovedEvents) == 0 {
+				fmt.Fprintf(a.Out, "No project-local BeforeDone hooks found in %s\n", result.HooksPath)
+			} else {
+				fmt.Fprintf(a.Out, "Removed project-local BeforeDone hooks from %s\n", result.HooksPath)
+			}
+			return ExitOK
+		}
+		result, err := setup.RemovePi(repo)
 		if err != nil {
+			if strings.Contains(err.Error(), "refusing to remove") {
+				return a.usageErr(err)
+			}
 			return a.internal(err)
 		}
 		if jsonOutput {
 			a.writeJSON(result)
-		} else if len(result.RemovedEvents) == 0 {
-			fmt.Fprintf(a.Out, "No project-local BeforeDone hooks found in %s\n", result.HooksPath)
+		} else if !result.Removed {
+			fmt.Fprintf(a.Out, "No project-local BeforeDone Pi extension found at %s\n", result.ExtensionPath)
 		} else {
-			fmt.Fprintf(a.Out, "Removed project-local BeforeDone hooks from %s\n", result.HooksPath)
+			fmt.Fprintf(a.Out, "Removed project-local BeforeDone Pi extension from %s\n", result.ExtensionPath)
 		}
 		return ExitOK
 	}
 	if _, err := config.Load(repo); err != nil {
 		return a.usageErr(err)
+	}
+	if target == "pi" {
+		result, err := setup.Pi(repo)
+		if err != nil {
+			if strings.Contains(err.Error(), "refusing to overwrite") {
+				return a.usageErr(err)
+			}
+			return a.internal(err)
+		}
+		if jsonOutput {
+			a.writeJSON(result)
+		} else {
+			fmt.Fprintf(a.Out, "Pi extension configured: %s\n", result.ExtensionPath)
+			for _, warning := range result.Warnings {
+				fmt.Fprintf(a.Out, "Warning: %s\n", warning)
+			}
+		}
+		return ExitOK
 	}
 	result, err := setup.Codex(repo)
 	if err != nil {
@@ -301,6 +346,39 @@ func (a *App) receipt(args []string) int {
 		fmt.Fprintf(a.Out, "Fingerprint: %s\n", receipt.RelevantFingerprint)
 	}
 	return verdictExit(effective)
+}
+
+func (a *App) gate(args []string) int {
+	jsonOutput, args := consumeBool(args, "--json")
+	if len(args) != 0 {
+		return a.usageError("usage: beforedone gate [--json]")
+	}
+	repo, err := repository.Discover(a.CWD)
+	if err != nil {
+		result := stopgate.InconclusiveBlock("BeforeDone cannot find the Git repository: " + err.Error())
+		return a.outputGate(jsonOutput, result)
+	}
+	cfg, err := config.Load(repo)
+	if err != nil {
+		result := stopgate.InconclusiveBlock("BeforeDone is not configured: " + err.Error())
+		return a.outputGate(jsonOutput, result)
+	}
+	return a.outputGate(jsonOutput, stopgate.Evaluate(repo, cfg))
+}
+
+func (a *App) outputGate(jsonOutput bool, result stopgate.Result) int {
+	if jsonOutput {
+		a.writeJSON(result)
+	} else {
+		fmt.Fprintf(a.Out, "Gate: %s · %s\n", result.Decision, result.Verdict)
+		if result.Reason != "" {
+			fmt.Fprintln(a.Out, result.Reason)
+		}
+		if result.SystemMessage != "" {
+			fmt.Fprintln(a.Out, result.SystemMessage)
+		}
+	}
+	return verdictExit(result.Verdict)
 }
 
 func (a *App) incident(args []string) int {
@@ -592,8 +670,10 @@ Usage:
   beforedone init
   beforedone doctor
   beforedone setup codex [--remove]
+  beforedone setup pi [--remove]
   beforedone check <check-id>
   beforedone receipt [check-id]
+  beforedone gate
   beforedone incident [--correction <text>] [--transcript <path>]
   beforedone replay analyze [replay-case.json]
   beforedone replay verify [replay-case.json] [--check <id>] [--execute]

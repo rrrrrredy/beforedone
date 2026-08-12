@@ -3,10 +3,11 @@
 **Make coding agents prove they're done.**
 
 BeforeDone is an open-source evidence gate and incident replay toolkit for
-Codex. It turns configured checks into receipts bound to their declared
-relevant-file scope, asks Codex for one corrective continuation when required
-evidence is missing or stale, and reconstructs failed runs from observable
-events and artifacts.
+coding agents. It turns configured checks into receipts bound to their declared
+relevant-file scope, evaluates completion through one machine-readable gate,
+and reconstructs failed runs from observable events and artifacts. Codex hooks
+can block the first Stop attempt; the project-local Pi extension evaluates a
+settled run and can start one corrective continuation.
 
 [Website and guide](https://rrrrrredy.github.io/beforedone/)
 
@@ -27,7 +28,7 @@ the exact implementation it evaluated.
 
 [Read the report and artifact](https://doi.org/10.5281/zenodo.21766277)
 
-## One product, three delivery forms
+## One product, four delivery forms
 
 - **CLI:** the source of truth for checks, receipts, incidents, replay, and
   adapter validation.
@@ -36,9 +37,11 @@ the exact implementation it evaluated.
   to the CLI.
 - **Standalone Skills Pack:** the same two workflows without lifecycle hooks or
   Stop enforcement.
+- **Project-local Pi extension:** bounded Pi lifecycle capture plus a
+  post-settlement evidence decision and one corrective continuation.
 
-The CLI is required in every setup. After installing it, choose exactly one
-Codex integration route:
+The CLI is required in every setup. For Codex, choose exactly one integration
+route:
 
 1. the Plugin for hooks plus both bundled skills;
 2. the standalone Skills Pack for a manual workflow; or
@@ -49,6 +52,9 @@ Do not combine these routes in one Codex environment. The Plugin plus
 standalone Skills duplicates the workflows; the Plugin plus project-local
 hooks runs the lifecycle integration twice.
 
+For Pi, use `beforedone setup pi`. Do not load another copy of the generated
+extension in the same Pi runtime.
+
 ## Requirements
 
 - A Git repository. BeforeDone resolves its local runtime through Git.
@@ -57,6 +63,8 @@ hooks runs the lifecycle integration twice.
 - The verifier programs named in `.beforedone.yaml`, such as `go`, `npm`, or
   `pytest`.
 - Codex only if you use the Plugin, standalone Skills, or project-local hooks.
+- A current Pi release exposing `agent_settled`, `pi.exec`, `pi.appendEntry`,
+  and `pi.sendUserMessage` only if you use the Pi integration.
 
 ## 1. Install the CLI
 
@@ -166,6 +174,20 @@ beforedone check test
 beforedone receipt test
 ```
 
+Evaluate every required receipt without running a verifier:
+
+```sh
+beforedone gate
+beforedone gate --json
+```
+
+The gate returns both a `decision` and an evidence `verdict`. Missing, failed,
+invalid, or stale required evidence blocks completion. A verifier receipt that
+is itself `INCONCLUSIVE` preserves the existing non-blocking warning behavior:
+the decision is `allow`, the verdict and process exit remain `INCONCLUSIVE`,
+and `system_message` explains the uncertainty. Adapters must read `decision`;
+they must not infer it from the exit code alone.
+
 A successful process creates a `PASS` receipt for the current relevant-file
 fingerprint. Changing a relevant file makes that receipt stale; changing a file
 outside the check's configured patterns does not. A word such as `PASS` in
@@ -179,7 +201,7 @@ of silently omitting evidence. Submodule contents are not fingerprinted in v1:
 if a `relevant_files` pattern may cover a Git submodule or a path below it, the
 check fails closed instead of issuing reusable evidence.
 
-## 3. Choose one Codex integration
+## 3. Choose an agent integration
 
 ### Route A: Codex Git Marketplace Plugin
 
@@ -282,6 +304,36 @@ the BeforeDone project hooks with:
 beforedone setup codex --remove
 ```
 
+### Pi: project-local extension
+
+Run this instead when the repository is used through Pi:
+
+```sh
+beforedone setup pi
+```
+
+The command writes `.pi/extensions/beforedone.ts` and pins it to the absolute
+BeforeDone executable found during setup. Review the file, approve Pi's
+project-trust prompt, and start a new Pi session. Rerun setup if the CLI path
+changes; remove only this generated extension with:
+
+```sh
+beforedone setup pi --remove
+```
+
+The extension records `session_start`, input metadata, tool start/finish,
+`agent_settled`, and `session_shutdown` through the normalized Adapter contract.
+It deliberately does not persist prompt text, tool arguments, tool output, or a
+raw transcript. Its branch-aware custom entry records whether the one automatic
+correction for the current prompt has already been used.
+
+Pi exposes `agent_settled` after its automatic retry, compaction, and queued
+continuation paths are exhausted. That makes the integration useful for a
+corrective follow-on, but it is not equivalent to Codex's pre-completion Stop
+hook: the first unsupported final message may already be visible before
+BeforeDone sends the corrective user message. The one-retry guard then allows
+the next settled result without creating an infinite loop.
+
 ## Incidents and replay
 
 Create a self-contained HTML report, machine-readable JSON, and Replay Case
@@ -344,8 +396,10 @@ create an unbounded in-memory result.
 beforedone init
 beforedone doctor
 beforedone setup codex [--remove]
+beforedone setup pi [--remove]
 beforedone check <check-id>
 beforedone receipt [check-id]
+beforedone gate
 beforedone incident [--correction <text>] [--transcript <path>]
 beforedone replay analyze [replay-case.json]
 beforedone replay verify [replay-case.json] [--check <id>] [--execute]
@@ -391,7 +445,7 @@ command-line arguments, and review artifacts before sharing them.
 `reports.retain` prunes older incident directories after a new incident is
 created. In v1 it does not automatically prune receipts, logs, or the event
 ledger. To erase all local BeforeDone evidence, first uninstall the selected
-Codex integration, then manually remove `.git/beforedone` after reviewing the
+agent integration, then manually remove `.git/beforedone` after reviewing the
 path. Remove `.beforedone.yaml` separately only if the repository should no
 longer define BeforeDone checks.
 
@@ -402,10 +456,10 @@ for the separate website and third-party-tool boundaries.
 ## Security and trust boundary
 
 BeforeDone is designed to catch missing or stale verifier evidence at a
-cooperative or fallible Agent's first Stop attempt, reducing the risk of
-unsupported early completion. It is not a security boundary against a
-malicious process with the same operating-system identity and repository write
-access.
+cooperative or fallible Agent's completion boundary. Codex can block its first
+Stop attempt; Pi can request one correction after settlement. It is not a
+security boundary against a malicious process with the same operating-system
+identity and repository write access.
 
 Such a process can read or replace `.git/beforedone/receipt.key`, edit
 `.beforedone.yaml`, alter runtime artifacts, or run a trivially passing allowed
@@ -423,10 +477,12 @@ before relying on receipts in a hostile environment.
 
 The v1 normalized event contract covers `SessionStarted`, `PromptSubmitted`,
 `ToolStarted`, `ToolFinished`, `AgentStopping`, and `SessionEnded`. Codex is the
-only officially supported v1 adapter. The public schemas, fixtures, and
-`beforedone adapter test` command form an Adapter Kit for future integrations;
-their presence is not a compatibility promise for other agents. A normalized
-event is limited to 256 attributes and 1 MiB after JSON encoding; the local
+supported pre-Stop adapter; `beforedone setup pi` supplies a Pi adapter
+whose `stop_retry` capability means one post-settlement continuation, not a
+pre-settlement block. The public schemas, fixtures, and `beforedone adapter
+test` command form an Adapter Kit for future integrations; their presence is
+not a compatibility promise for other agents. A normalized event is limited to
+256 attributes and 1 MiB after JSON encoding; the local
 event ledger is read fail-closed once it exceeds 64 MiB. Review and rotate the
 ledger before that boundary if a long-running repository produces many events.
 The v1 writer revalidates committed segments and ID claims before every append;
@@ -442,15 +498,15 @@ the version mismatch is resolved.
 
 ## Upgrade and complete removal
 
-All three delivery forms share one SemVer release. Upgrade the CLI first, then
-refresh whichever single Codex route you selected using the instructions above.
-Run `beforedone doctor` in each configured repository after upgrading.
+All four delivery forms share one SemVer release. Upgrade the CLI first, then
+refresh the selected integration using the instructions above. Run `beforedone
+doctor` in each configured repository after upgrading.
 
 For a complete removal:
 
 1. uninstall the Plugin in the Plugins Directory, remove the two standalone
-   skill directories, or run `beforedone setup codex --remove`—whichever route
-   you selected;
+   skill directories, run `beforedone setup codex --remove`, or run
+   `beforedone setup pi --remove`—whichever integration you selected;
 2. locate the CLI with `command -v beforedone` on macOS/Linux or
    `Get-Command beforedone` in PowerShell, then remove the binary you installed;
 3. optionally remove `.git/beforedone` and `.beforedone.yaml` from each

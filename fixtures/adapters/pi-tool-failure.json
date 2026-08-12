@@ -1,0 +1,23 @@
+{
+  "input": {
+    "schema_version": 1,
+    "id": "pi-tool-failure-fixture",
+    "occurred_at": "2026-08-12T00:00:01Z",
+    "type": "ToolFinished",
+    "source": "pi",
+    "session_id": "pi-session-fixture",
+    "turn_id": "pi-session-fixture:turn:1",
+    "cwd": "/workspace/project",
+    "tool_name": "bash",
+    "exit_code": 1,
+    "summary": "Pi tool execution failed",
+    "attributes": {
+      "tool_call_id": "tool-fixture",
+      "is_error": "true"
+    }
+  },
+  "expected": {
+    "type": "ToolFinished",
+    "exit_code": 1
+  }
+}

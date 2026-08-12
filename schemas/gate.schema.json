@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rrrrrredy.github.io/beforedone/schemas/gate.schema.json",
+  "title": "BeforeDone completion gate result v1",
+  "type": "object",
+  "required": ["schema_version", "decision", "verdict", "checks"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "decision": { "enum": ["allow", "block"] },
+    "verdict": { "enum": ["PASS", "FAIL", "INCONCLUSIVE"] },
+    "reason": { "type": "string", "minLength": 1 },
+    "system_message": { "type": "string", "minLength": 1 },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["check_id", "verdict"],
+        "properties": {
+          "check_id": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "verdict": { "enum": ["PASS", "FAIL", "INCONCLUSIVE"] },
+          "receipt_verdict": { "enum": ["PASS", "FAIL", "INCONCLUSIVE"] },
+          "fresh": { "type": "boolean" },
+          "reason": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "decision": { "const": "block" } }, "required": ["decision"] },
+      "then": { "required": ["reason"] }
+    },
+    {
+      "if": { "properties": { "verdict": { "const": "PASS" } }, "required": ["verdict"] },
+      "then": { "properties": { "decision": { "const": "allow" } } }
+    },
+    {
+      "if": { "properties": { "verdict": { "const": "FAIL" } }, "required": ["verdict"] },
+      "then": { "properties": { "decision": { "const": "block" } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "decision": { "const": "allow" },
+          "verdict": { "const": "INCONCLUSIVE" }
+        },
+        "required": ["decision", "verdict"]
+      },
+      "then": { "required": ["system_message"] }
+    }
+  ],
+  "additionalProperties": false
+}

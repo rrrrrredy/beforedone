@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/rrrrrredy/beforedone/internal/config"
+	stopgate "github.com/rrrrrredy/beforedone/internal/gate"
 	"github.com/rrrrrredy/beforedone/internal/model"
 	"gopkg.in/yaml.v3"
 )
@@ -67,6 +68,75 @@ func TestMissingReceiptIsInconclusiveNotInternalError(t *testing.T) {
 	}
 }
 
+func TestGateReportsMissingFreshFailedAndInconclusiveEvidence(t *testing.T) {
+	t.Run("missing receipt blocks with INCONCLUSIVE", func(t *testing.T) {
+		root := newCLITestRepo(t, []string{"git", "status", "--short"})
+		result, code := runGateCLI(t, root)
+		if code != ExitInconclusive || result.Decision != stopgate.Block || result.Verdict != model.Inconclusive {
+			t.Fatalf("gate = %+v exit=%d, want blocking INCONCLUSIVE", result, code)
+		}
+		if len(result.Checks) != 1 || !strings.Contains(result.Checks[0].Reason, "no evidence receipt") {
+			t.Fatalf("missing receipt detail = %+v", result.Checks)
+		}
+	})
+
+	t.Run("fresh PASS allows", func(t *testing.T) {
+		root := newCLITestRepo(t, []string{"git", "status", "--short"})
+		if code, _, stderr := runCLI(t, root, "check", "unit", "--json"); code != ExitOK {
+			t.Fatalf("check exit=%d stderr=%s", code, stderr)
+		}
+		result, code := runGateCLI(t, root)
+		if code != ExitOK || result.Decision != stopgate.Allow || result.Verdict != model.Pass {
+			t.Fatalf("gate = %+v exit=%d, want allowing PASS", result, code)
+		}
+		if len(result.Checks) != 1 || result.Checks[0].Fresh == nil || !*result.Checks[0].Fresh {
+			t.Fatalf("fresh PASS detail = %+v", result.Checks)
+		}
+	})
+
+	t.Run("stale PASS blocks with INCONCLUSIVE", func(t *testing.T) {
+		root := newCLITestRepo(t, []string{"git", "status", "--short"})
+		if code, _, stderr := runCLI(t, root, "check", "unit", "--json"); code != ExitOK {
+			t.Fatalf("check exit=%d stderr=%s", code, stderr)
+		}
+		if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("changed\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		result, code := runGateCLI(t, root)
+		if code != ExitInconclusive || result.Decision != stopgate.Block || result.Verdict != model.Inconclusive {
+			t.Fatalf("gate = %+v exit=%d, want blocking INCONCLUSIVE", result, code)
+		}
+		if len(result.Checks) != 1 || result.Checks[0].Fresh == nil || *result.Checks[0].Fresh {
+			t.Fatalf("stale PASS detail = %+v", result.Checks)
+		}
+	})
+
+	t.Run("failed receipt blocks with FAIL", func(t *testing.T) {
+		root := newCLITestRepo(t, []string{"git", "rev-parse", "--verify", "refs/heads/beforedone-definitely-missing"})
+		if code, _, stderr := runCLI(t, root, "check", "unit", "--json"); code != ExitFail {
+			t.Fatalf("check exit=%d stderr=%s", code, stderr)
+		}
+		result, code := runGateCLI(t, root)
+		if code != ExitFail || result.Decision != stopgate.Block || result.Verdict != model.Fail {
+			t.Fatalf("gate = %+v exit=%d, want blocking FAIL", result, code)
+		}
+	})
+
+	t.Run("inconclusive receipt warns without blocking", func(t *testing.T) {
+		root := newCLITestRepo(t, []string{"beforedone-missing-command-42dcf6"})
+		if code, _, stderr := runCLI(t, root, "check", "unit", "--json"); code != ExitInconclusive {
+			t.Fatalf("check exit=%d stderr=%s", code, stderr)
+		}
+		result, code := runGateCLI(t, root)
+		if code != ExitInconclusive || result.Decision != stopgate.Allow || result.Verdict != model.Inconclusive {
+			t.Fatalf("gate = %+v exit=%d, want allowing INCONCLUSIVE warning", result, code)
+		}
+		if !strings.Contains(result.SystemMessage, "INCONCLUSIVE") {
+			t.Fatalf("missing warning: %+v", result)
+		}
+	})
+}
+
 func TestUnknownCheckIsUsageError(t *testing.T) {
 	root := newCLITestRepo(t, []string{"git", "status", "--short"})
 	code, _, stderr := runCLI(t, root, "check", "not-configured", "--json")
@@ -91,6 +161,40 @@ func TestSetupCodexRemoveWorksAfterConfigIsDeleted(t *testing.T) {
 	assertSchemaOne(t, stdout)
 	if !strings.Contains(stdout, "removed_events") {
 		t.Fatalf("remove result does not report cleanup: %s", stdout)
+	}
+}
+
+func TestSetupPiRemoveWorksAfterConfigIsDeleted(t *testing.T) {
+	root := newCLITestRepo(t, []string{"git", "status", "--short"})
+	code, stdout, stderr := runCLI(t, root, "setup", "pi", "--json")
+	if code != ExitOK {
+		t.Fatalf("setup exit = %d\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	assertSchemaOne(t, stdout)
+	path := filepath.Join(root, ".pi", "extensions", "beforedone.ts")
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("generated Pi extension: %v", err)
+	}
+	code, stdout, stderr = runCLI(t, root, "doctor", "--json")
+	if code != ExitInconclusive {
+		t.Fatalf("doctor exit = %d\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	if !strings.Contains(stdout, `"name": "pi-extension"`) || !strings.Contains(stdout, `"verdict": "PASS"`) {
+		t.Fatalf("doctor did not report configured Pi extension: %s", stdout)
+	}
+	if err := os.Remove(filepath.Join(root, config.FileName)); err != nil {
+		t.Fatal(err)
+	}
+	code, stdout, stderr = runCLI(t, root, "setup", "pi", "--remove", "--json")
+	if code != ExitOK {
+		t.Fatalf("remove exit = %d\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	assertSchemaOne(t, stdout)
+	if !strings.Contains(stdout, `"removed": true`) {
+		t.Fatalf("remove result does not report cleanup: %s", stdout)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("Pi extension remains after remove: %v", err)
 	}
 }
 
@@ -158,6 +262,16 @@ func runCLI(t *testing.T, cwd string, args ...string) (int, string, string) {
 	app := &App{In: bytes.NewReader(nil), Out: &stdout, Err: &stderr, CWD: cwd, Version: "test"}
 	code := app.Run(args)
 	return code, stdout.String(), stderr.String()
+}
+
+func runGateCLI(t *testing.T, cwd string) (stopgate.Result, int) {
+	t.Helper()
+	code, stdout, stderr := runCLI(t, cwd, "gate", "--json")
+	var result stopgate.Result
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("invalid gate JSON %q (stderr=%s): %v", stdout, stderr, err)
+	}
+	return result, code
 }
 
 func assertSchemaOne(t *testing.T, raw string) {
