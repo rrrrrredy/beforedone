@@ -114,7 +114,7 @@ PASS.</code></pre>
             <li><strong>Fresh PASS</strong><span>A new receipt matches the current files.</span></li>
             <li><strong>Done allowed</strong><span>The claim now has inspectable support.</span></li>
           </ol>
-          <p>Pi uses the same machine-readable <code>beforedone gate</code> result, but its boundary is different: <code>agent_settled</code> occurs after Pi has finished automatic retries and continuations. The extension may therefore show the first unsupported final message before sending one corrective user message; a branch-aware loop guard prevents a second automatic retry for that prompt.</p>
+          <p>Pi uses the same machine-readable <code>beforedone gate</code> result, but its boundary is different: <code>agent_settled</code> occurs after Pi has finished automatic retries and continuations. The extension may therefore show the first unsupported final message before sending one corrective user message. Its branch-aware guard permits at most one automatic correction; interactive or RPC input resets it, while extension-originated input shares the existing guard.</p>
         </section>
 
         <section class="guide-section" id="receipt">
