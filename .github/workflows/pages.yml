@@ -101,6 +101,7 @@ jobs:
           expected=(
             adapter-manifest.schema.json
             event.schema.json
+            gate.schema.json
             incident.schema.json
             receipt.schema.json
             replay-case.schema.json

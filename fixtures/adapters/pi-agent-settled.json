@@ -1,0 +1,16 @@
+{
+  "input": {
+    "schema_version": 1,
+    "id": "pi-agent-settled-fixture",
+    "occurred_at": "2026-08-12T00:00:00Z",
+    "type": "AgentStopping",
+    "source": "pi",
+    "session_id": "pi-session-fixture",
+    "turn_id": "pi-session-fixture:turn:1",
+    "cwd": "/workspace/project",
+    "summary": "Pi agent settled"
+  },
+  "expected": {
+    "type": "AgentStopping"
+  }
+}

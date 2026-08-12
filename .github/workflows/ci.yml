@@ -69,6 +69,7 @@ jobs:
 
           expected = {
               "event.schema.json",
+              "gate.schema.json",
               "receipt.schema.json",
               "incident.schema.json",
               "replay-case.schema.json",

@@ -1,7 +1,6 @@
 package hooks
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -9,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +15,7 @@ import (
 
 	"github.com/rrrrrredy/beforedone/internal/config"
 	"github.com/rrrrrredy/beforedone/internal/evidence"
+	"github.com/rrrrrredy/beforedone/internal/gate"
 	"github.com/rrrrrredy/beforedone/internal/model"
 	"github.com/rrrrrredy/beforedone/internal/redact"
 	"github.com/rrrrrredy/beforedone/internal/repository"
@@ -33,7 +32,6 @@ const (
 )
 
 const maxHookInput = 8 << 20
-const stopValidationBudget = 45 * time.Second
 
 type Output struct {
 	Decision      string `json:"decision,omitempty"`
@@ -42,7 +40,7 @@ type Output struct {
 }
 
 func Codex(in io.Reader, out io.Writer, processCWD string) error {
-	return codexWithValidationBudget(in, out, processCWD, stopValidationBudget)
+	return codexWithValidationBudget(in, out, processCWD, gate.DefaultValidationBudget)
 }
 
 func codexWithValidationBudget(in io.Reader, out io.Writer, processCWD string, validationBudget time.Duration) error {
@@ -111,49 +109,12 @@ func codexWithValidationBudget(in io.Reader, out io.Writer, processCWD string, v
 		return block(out, "BeforeDone is not configured: "+err.Error())
 	}
 
-	var blockers, warnings []string
-	ctx, cancel := context.WithTimeout(context.Background(), validationBudget)
-	defer cancel()
-	fingerprintCache := evidence.NewFingerprintCache()
-	ids := make([]string, 0, len(cfg.Checks))
-	for id, check := range cfg.Checks {
-		if check.IsRequired() {
-			ids = append(ids, id)
-		}
+	result := gate.EvaluateWithBudget(repo, cfg, validationBudget)
+	if result.Decision == gate.Block {
+		return block(out, result.Reason)
 	}
-	sort.Strings(ids)
-	for _, id := range ids {
-		if err := ctx.Err(); err != nil {
-			blockers = append(blockers, fmt.Sprintf("evidence validation exceeded the %s safety budget; narrow relevant_files or run `beforedone doctor`", validationBudget))
-			break
-		}
-		receipt, err := evidence.LoadLatest(repo, id)
-		if err != nil {
-			blockers = append(blockers, fmt.Sprintf("%s: no evidence receipt; run `beforedone check %s`", id, id))
-			continue
-		}
-		if err := evidence.VerifySignature(repo, receipt); err != nil {
-			blockers = append(blockers, fmt.Sprintf("%s: invalid evidence receipt (%v)", id, err))
-			continue
-		}
-		switch receipt.Verdict {
-		case model.Inconclusive:
-			warnings = append(warnings, fmt.Sprintf("%s: verification was INCONCLUSIVE (%s)", id, receipt.Error))
-			continue
-		case model.Fail:
-			blockers = append(blockers, fmt.Sprintf("%s: latest verification FAILED; run `beforedone check %s` after fixing it", id, id))
-			continue
-		}
-		fresh, reason := evidence.ValidateFreshContext(ctx, repo, cfg, receipt, fingerprintCache)
-		if !fresh {
-			blockers = append(blockers, fmt.Sprintf("%s: evidence is stale (%s); run `beforedone check %s`", id, reason, id))
-		}
-	}
-	if len(blockers) > 0 {
-		return block(out, "BeforeDone requires fresh evidence before completion:\n- "+strings.Join(blockers, "\n- "))
-	}
-	if len(warnings) > 0 {
-		return writeJSON(out, Output{SystemMessage: "BeforeDone could not reach a conclusive verdict:\n- " + strings.Join(warnings, "\n- ")})
+	if result.SystemMessage != "" {
+		return writeJSON(out, Output{SystemMessage: result.SystemMessage})
 	}
 	return writeJSON(out, Output{})
 }
