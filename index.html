@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>BeforeDone — Make coding agents prove they're done</title>
-  <meta name="description" content="BeforeDone is an open-source evidence gate and incident replay toolkit for Codex. Fresh evidence before completion; a replayable incident report when things go wrong.">
+  <meta name="description" content="BeforeDone is an open-source evidence gate and incident replay toolkit for coding agents. Fresh evidence before completion; a replayable incident report when things go wrong.">
   <meta name="theme-color" content="#0b0b0c">
   <meta property="og:type" content="website">
   <meta property="og:title" content="BeforeDone — Make coding agents prove they're done">
@@ -78,7 +78,7 @@
     <section class="proof-sequence section-paper" aria-labelledby="proof-heading">
       <div class="section-intro">
         <h2 id="proof-heading">No fresh evidence.<br>No credible done.</h2>
-        <p>BeforeDone evaluates explicit verifier results against their declared relevant-file scope. It asks Codex for one corrective continuation when the proof is missing, failed, or stale.</p>
+        <p>BeforeDone evaluates explicit verifier results against their declared relevant-file scope. Codex can block the first Stop attempt; Pi can request one corrective continuation after settlement.</p>
       </div>
 
       <ol class="gate-steps">
@@ -110,6 +110,7 @@
           <p>The final claim now has inspectable support.</p>
         </li>
       </ol>
+      <p>That sequence is the Codex pre-Stop path. The Pi integration runs the same gate after <code>agent_settled</code>, so the first unsupported final message may appear before its one corrective follow-on.</p>
 
       <div class="receipt-anatomy">
         <div>
@@ -199,8 +200,8 @@
 
     <section class="install section-paper" id="install" aria-labelledby="install-heading">
       <div class="section-intro install-intro">
-        <h2 id="install-heading">One core. Choose one Codex route.</h2>
-        <p>The CLI is the source of truth and is always required. Then choose exactly one integration: the Git Marketplace Plugin for hooks plus both bundled skills, the standalone Skills Pack for a manual workflow, or project-local hooks from <code>beforedone setup codex</code>. Combining routes duplicates hooks or workflows.</p>
+        <h2 id="install-heading">One core. Choose the agent route.</h2>
+        <p>The CLI is the source of truth and is always required. For Codex, choose exactly one of the Plugin, standalone Skills, or project-local hooks. For Pi, use the project-local extension from <code>beforedone setup pi</code>; it corrects after settlement rather than suppressing the first final message.</p>
       </div>
 
       <div class="install-switcher" data-tabs>
@@ -250,8 +251,8 @@
       </div>
       <div class="receipt-anatomy">
         <div>
-          <h3>Project-local hook alternative</h3>
-          <p>Instead of the Plugin or standalone Skills, run <code>beforedone setup codex</code>, trust the project hooks with <code>/hooks</code>, and start a new task. Remove them with <code>beforedone setup codex --remove</code>.</p>
+          <h3>Project-local agent integrations</h3>
+          <p>For Codex, run <code>beforedone setup codex</code>, trust the project hooks with <code>/hooks</code>, and remove them with <code>beforedone setup codex --remove</code>. For Pi, run <code>beforedone setup pi</code>, review and trust the generated extension, and remove it with <code>beforedone setup pi --remove</code>.</p>
         </div>
         <p>For upgrades, uninstallation, data removal, and pinned versions, follow the <a href="https://github.com/rrrrrredy/beforedone#readme">complete README</a>.</p>
       </div>
@@ -285,7 +286,7 @@
         </details>
         <details>
           <summary>Is a receipt tamper-proof attestation?</summary>
-          <p>No. The key, configuration, and runtime artifacts are local. A malicious process with the same user and repository write access can manufacture a self-consistent PASS. BeforeDone checks missing or stale evidence on a cooperative or fallible Agent's first Stop attempt; hostile Agents require an external trust boundary.</p>
+          <p>No. The key, configuration, and runtime artifacts are local. A malicious process with the same user and repository write access can manufacture a self-consistent PASS. BeforeDone checks missing or stale evidence at a cooperative or fallible Agent's completion boundary; Codex blocks at Stop while Pi corrects after settlement. Hostile Agents require an external trust boundary.</p>
         </details>
         <details>
           <summary>Does replay rerun the model?</summary>

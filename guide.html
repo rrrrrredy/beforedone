@@ -34,7 +34,7 @@
     <section class="guide-hero" aria-labelledby="guide-title">
       <div class="guide-hero-copy">
         <h1 id="guide-title">Fresh evidence <span>before</span> done.</h1>
-        <p>On the first Stop attempt, BeforeDone checks for current, file-bound verifier receipts. When proof is missing, failed, or stale, the Stop Gate asks for one corrective continuation; a loop guard permits the next Stop attempt.</p>
+        <p>With Codex, BeforeDone checks current, file-bound verifier receipts on the first Stop attempt and can request one corrective continuation. With Pi, the same gate runs after <code>agent_settled</code> and can start one corrective follow-on.</p>
         <div class="hero-actions">
           <a class="button button-primary" href="#quickstart">Install CLI</a>
           <a class="button button-ghost" href="https://github.com/rrrrrredy/beforedone">View repository</a>
@@ -42,7 +42,7 @@
       </div>
       <dl class="guide-metadata" aria-label="Project metadata">
         <div><dt>Runtime</dt><dd>Go CLI</dd></div>
-        <div><dt>Integration</dt><dd>Codex hooks</dd></div>
+        <div><dt>Integration</dt><dd>Codex hooks · Pi extension</dd></div>
         <div><dt>Data</dt><dd>Local only</dd></div>
         <div><dt>License</dt><dd>Apache-2.0</dd></div>
       </dl>
@@ -71,7 +71,7 @@
         <section class="guide-section" id="quickstart">
           <span class="guide-number">00</span>
           <h2>30-Second Quickstart</h2>
-          <p>Install the local evidence engine, initialize the target Git repository, review the generated policy, and confirm the environment before adding one Codex integration route.</p>
+          <p>Install the local evidence engine, initialize the target Git repository, review the generated policy, and confirm the environment before adding an agent integration.</p>
           <div class="guide-code-block">
             <div class="guide-code-head"><span>Shell</span><button type="button" data-copy="go install github.com/rrrrrredy/beforedone/cmd/beforedone@latest&#10;beforedone init&#10;beforedone doctor">Copy</button></div>
             <pre><code>go install github.com/rrrrrredy/beforedone/cmd/beforedone@latest
@@ -79,6 +79,7 @@ beforedone init
 beforedone doctor</code></pre>
           </div>
           <p class="guide-callout"><strong>Then choose exactly one Codex route.</strong> The Git Marketplace Plugin, standalone Skills Pack, and project-local hooks are separate delivery forms; combining them duplicates workflows.</p>
+          <p class="guide-callout"><strong>Using Pi?</strong> Run <code>beforedone setup pi</code>, review and trust the generated project extension, and remember that Pi correction happens after settlement rather than before the first final message.</p>
           <p class="guide-callout"><strong>Choose evidence before asking for PASS.</strong> BeforeDone verifies project-approved commands; it does not infer whether they fully cover a natural-language requirement. A user does not need to locate the exact bug, but the task needs observable acceptance criteria and a credible verifier. Treat non-Go <code>git status --short</code> initialization as scaffolding, never correctness proof.</p>
           <div class="guide-code-block">
             <div class="guide-code-head"><span>Prompt · configure once</span><button type="button" data-copy data-copy-target="#prompt-configure">Copy</button></div>
@@ -106,13 +107,14 @@ PASS.</code></pre>
           <span class="guide-number">01</span>
           <h2>How the Stop Gate Works</h2>
           <p>The gate evaluates explicit verifier results against the current configured files. It does not infer success from prose or from the word “PASS” appearing in logs.</p>
-          <ol class="guide-flow" aria-label="Stop Gate flow">
+          <ol class="guide-flow" aria-label="Codex Stop Gate flow">
             <li><strong>Agent stops</strong><span>A completion claim reaches the hook.</span></li>
             <li><strong>Receipts checked</strong><span>Required checks and fingerprints are compared.</span></li>
             <li><strong>Missing or stale</strong><span>One corrective continuation explains what to run.</span></li>
             <li><strong>Fresh PASS</strong><span>A new receipt matches the current files.</span></li>
             <li><strong>Done allowed</strong><span>The claim now has inspectable support.</span></li>
           </ol>
+          <p>Pi uses the same machine-readable <code>beforedone gate</code> result, but its boundary is different: <code>agent_settled</code> occurs after Pi has finished automatic retries and continuations. The extension may therefore show the first unsupported final message before sending one corrective user message; a branch-aware loop guard prevents a second automatic retry for that prompt.</p>
         </section>
 
         <section class="guide-section" id="receipt">
@@ -155,7 +157,7 @@ PASS.</code></pre>
         <section class="guide-section" id="install-routes">
           <span class="guide-number">04</span>
           <h2>Install Routes</h2>
-          <p>The CLI is always the source of truth. Add one integration depending on whether you want automatic Stop enforcement or a manual skills workflow.</p>
+          <p>The CLI is always the source of truth. Add one Codex route for pre-Stop enforcement or a manual workflow, or add the project-local Pi extension for post-settlement correction.</p>
           <div class="guide-table-wrap">
             <table>
               <thead><tr><th>Route</th><th>What it adds</th><th>Use when</th></tr></thead>
@@ -163,6 +165,7 @@ PASS.</code></pre>
                 <tr><td>Git Marketplace Plugin</td><td>Stop hooks plus both bundled skills</td><td>You want the full automatic Codex gate.</td></tr>
                 <tr><td>Standalone Skills Pack</td><td>Manual verification and incident workflows</td><td>You cannot or do not want to install hooks.</td></tr>
                 <tr><td>Project-local hooks</td><td><code>beforedone setup codex</code></td><td>You want enforcement scoped to one repository.</td></tr>
+                <tr><td>Pi extension</td><td><code>beforedone setup pi</code></td><td>You want bounded Pi events and one post-settlement correction.</td></tr>
               </tbody>
             </table>
           </div>
@@ -189,13 +192,15 @@ PASS.</code></pre>
               <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
               <tbody>
                 <tr><td><code>beforedone init</code></td><td>Create a reviewed starter policy for the repository.</td></tr>
-                <tr><td><code>beforedone doctor</code></td><td>Check Git, policy, runtime directories, CLI, and optional Codex hooks.</td></tr>
+                <tr><td><code>beforedone doctor</code></td><td>Check Git, policy, runtime directories, CLI, and optional agent integrations.</td></tr>
                 <tr><td><code>beforedone check &lt;id&gt;</code></td><td>Run one configured verifier and record a bounded receipt.</td></tr>
                 <tr><td><code>beforedone receipt [id]</code></td><td>Evaluate a Receipt against the current relevant files.</td></tr>
+                <tr><td><code>beforedone gate</code></td><td>Evaluate every required receipt and return an allow/block decision.</td></tr>
                 <tr><td><code>beforedone incident</code></td><td>Generate an evidence-only incident report.</td></tr>
                 <tr><td><code>beforedone replay analyze</code></td><td>Analyze a replay case without executing commands.</td></tr>
                 <tr><td><code>beforedone replay verify --execute</code></td><td>Rerun current configured checks in a temporary detached worktree.</td></tr>
                 <tr><td><code>beforedone setup codex</code></td><td>Install or remove project-local Codex hooks.</td></tr>
+                <tr><td><code>beforedone setup pi</code></td><td>Install or remove the project-local Pi extension.</td></tr>
               </tbody>
             </table>
           </div>
