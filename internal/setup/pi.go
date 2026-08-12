@@ -108,7 +108,8 @@ func renderPiExtension(executable string) ([]byte, error) {
 func piWarnings() []string {
 	return []string{
 		"review and trust the generated .pi project extension before starting Pi",
-		"Pi evaluates BeforeDone after agent_settled and can trigger one corrective continuation; it cannot suppress the first unsupported final message",
+		"Pi evaluates BeforeDone after agent_settled; its branch-aware guard permits at most one automatic correction until interactive or RPC input resets it",
+		"extension-originated input shares the existing correction guard, and the extension cannot suppress the first unsupported final message",
 		"rerun `beforedone setup pi` if the BeforeDone executable path changes",
 	}
 }
@@ -327,7 +328,7 @@ export default function beforeDonePi(pi: ExtensionAPI) {
     }
     if (stopState.corrective_continuation_used) {
       ctx.ui.notify(
-        "BeforeDone still blocks completion; the one automatic corrective continuation for this prompt was already used.",
+        "BeforeDone still blocks completion; the branch-aware guard has already used its one automatic correction. Interactive or RPC input resets the guard; extension-originated input shares it.",
         "warning",
       );
       return;
