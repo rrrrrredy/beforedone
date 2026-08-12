@@ -324,8 +324,9 @@ beforedone setup pi --remove
 The extension records `session_start`, input metadata, tool start/finish,
 `agent_settled`, and `session_shutdown` through the normalized Adapter contract.
 It deliberately does not persist prompt text, tool arguments, tool output, or a
-raw transcript. Its branch-aware custom entry records whether the one automatic
-correction for the current prompt has already been used.
+raw transcript. Its branch-aware custom entry permits at most one automatic
+correction. Interactive or RPC input resets the guard; extension-originated
+input shares the existing guard.
 
 Pi exposes `agent_settled` after its automatic retry, compaction, and queued
 continuation paths are exhausted. That makes the integration useful for a
