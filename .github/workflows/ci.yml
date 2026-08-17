@@ -96,6 +96,9 @@ jobs:
       - name: Validate plugin, marketplace, hooks, and skills contract
         run: python scripts/validate_distribution.py
 
+      - name: Test formal release checksum contract
+        run: python scripts/test_validate_release_checksums.py
+
       - name: Check GoReleaser configuration
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
         with:
