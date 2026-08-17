@@ -23,11 +23,12 @@ function session(id = "session-1") {
 }
 
 test("accepts the supported CLI range and rejects old, future-major, and malformed builds", () => {
-  assert.equal(assertCompatibleCliVersion("beforedone 1.1.0\n").raw, "1.1.0");
+  assert.equal(assertCompatibleCliVersion("beforedone 1.1.1\n").raw, "1.1.1");
   assert.equal(assertCompatibleCliVersion("beforedone v1.8.3\n").raw, "v1.8.3");
-  assert.equal(assertCompatibleCliVersion("beforedone 1.1.0-dev\n").raw, "1.1.0-dev");
-  assert.throws(() => assertCompatibleCliVersion("beforedone 1.0.2\n"), />=1\.1\.0 <2/);
-  assert.throws(() => assertCompatibleCliVersion("beforedone 2.0.0\n"), />=1\.1\.0 <2/);
+  assert.equal(assertCompatibleCliVersion("beforedone 1.1.1-dev\n").raw, "1.1.1-dev");
+  assert.throws(() => assertCompatibleCliVersion("beforedone 1.1.0\n"), />=1\.1\.1 <2/);
+  assert.throws(() => assertCompatibleCliVersion("beforedone 1.0.2\n"), />=1\.1\.1 <2/);
+  assert.throws(() => assertCompatibleCliVersion("beforedone 2.0.0\n"), />=1\.1\.1 <2/);
   assert.throws(() => assertCompatibleCliVersion("beforedone dev\n"), /semantic version/);
 });
 

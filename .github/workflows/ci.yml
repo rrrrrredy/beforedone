@@ -287,7 +287,7 @@ jobs:
           New-Item -ItemType Directory -Force $bin | Out-Null
           $name = if ($IsWindows) { 'beforedone.exe' } else { 'beforedone' }
           $cli = Join-Path $bin $name
-          go build -trimpath -ldflags '-X main.version=1.1.0-dev' -o $cli ./cmd/beforedone
+          go build -trimpath -ldflags '-X main.version=1.1.1-dev' -o $cli ./cmd/beforedone
           "BEFOREDONE_CLI=$cli" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Run real SessionStore and local CLI integration
@@ -350,7 +350,7 @@ jobs:
           $name = if ($IsWindows) { 'beforedone.exe' } else { 'beforedone' }
           $cli = Join-Path $bin $name
           Push-Location ../..
-          go build -trimpath -ldflags '-X main.version=1.1.0-dev' -o $cli ./cmd/beforedone
+          go build -trimpath -ldflags '-X main.version=1.1.1-dev' -o $cli ./cmd/beforedone
           Pop-Location
           "BEFOREDONE_CLI=$cli" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
