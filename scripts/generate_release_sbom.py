@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -67,25 +68,66 @@ def _safe_destination(root: Path, member: PurePosixPath) -> Path:
 def _extract_tar(archive: Path, root: Path) -> None:
     with tarfile.open(archive, mode="r:*") as handle:
         members = handle.getmembers()
+        validated: list[tuple[tarfile.TarInfo, Path]] = []
+        destinations: set[str] = set()
         for member in members:
             relative = _safe_member_name(member.name)
-            _safe_destination(root, relative)
+            key = relative.as_posix()
+            if key in destinations:
+                raise SbomError(f"archive contains a duplicate member: {member.name!r}")
+            destinations.add(key)
+            destination = _safe_destination(root, relative)
             if not (member.isdir() or member.isfile()):
                 raise SbomError(
                     f"archive member must be a regular file or directory: {member.name!r}"
                 )
-        handle.extractall(root, members=members, filter="data")
+            validated.append((member, destination))
+
+        for member, destination in validated:
+            if member.isdir():
+                destination.mkdir(parents=True, exist_ok=True)
+                continue
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            source = handle.extractfile(member)
+            if source is None:
+                raise SbomError(f"cannot read archive member: {member.name!r}")
+            with source, destination.open("xb") as output:
+                shutil.copyfileobj(source, output, length=1024 * 1024)
 
 
 def _extract_zip(archive: Path, root: Path) -> None:
     with zipfile.ZipFile(archive) as handle:
+        validated: list[tuple[zipfile.ZipInfo, Path, bool]] = []
+        destinations: set[str] = set()
         for member in handle.infolist():
             relative = _safe_member_name(member.filename)
-            _safe_destination(root, relative)
+            key = relative.as_posix()
+            if key in destinations:
+                raise SbomError(f"archive contains a duplicate member: {member.filename!r}")
+            destinations.add(key)
+            destination = _safe_destination(root, relative)
             unix_mode = (member.external_attr >> 16) & 0xFFFF
-            if stat.S_ISLNK(unix_mode):
+            file_type = stat.S_IFMT(unix_mode)
+            directory = member.is_dir()
+            if file_type == stat.S_IFLNK:
                 raise SbomError(f"archive symlink is forbidden: {member.filename!r}")
-        handle.extractall(root)
+            if directory and file_type not in (0, stat.S_IFDIR):
+                raise SbomError(
+                    f"archive directory has an invalid file type: {member.filename!r}"
+                )
+            if not directory and file_type not in (0, stat.S_IFREG):
+                raise SbomError(
+                    f"archive member must be a regular file or directory: {member.filename!r}"
+                )
+            validated.append((member, destination, directory))
+
+        for member, destination, directory in validated:
+            if directory:
+                destination.mkdir(parents=True, exist_ok=True)
+                continue
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with handle.open(member, mode="r") as source, destination.open("xb") as output:
+                shutil.copyfileobj(source, output, length=1024 * 1024)
 
 
 def extract_archive(archive: Path, root: Path) -> None:

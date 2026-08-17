@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import io
 import json
+import stat
 import tarfile
 import tempfile
 import unittest
@@ -112,6 +114,34 @@ class ReleaseSbomTests(unittest.TestCase):
                 extract_archive(archive, destination)
             self.assertFalse((root / "escape.txt").exists())
 
+    def test_extracts_regular_tar_without_extractall_filter_support(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "release.tar.gz"
+            content = b"beforedone\n"
+            with tarfile.open(archive, "w:gz") as handle:
+                member = tarfile.TarInfo("bin/beforedone")
+                member.size = len(content)
+                handle.addfile(member, io.BytesIO(content))
+            destination = root / "extract"
+            destination.mkdir()
+            extract_archive(archive, destination)
+            self.assertEqual((destination / "bin" / "beforedone").read_bytes(), content)
+
+    def test_extracts_regular_zip_without_extractall(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "release.zip"
+            with zipfile.ZipFile(archive, "w") as handle:
+                handle.writestr("bin/beforedone.exe", b"beforedone\n")
+            destination = root / "extract"
+            destination.mkdir()
+            extract_archive(archive, destination)
+            self.assertEqual(
+                (destination / "bin" / "beforedone.exe").read_bytes(),
+                b"beforedone\n",
+            )
+
     def test_rejects_windows_drive_qualified_member(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -132,6 +162,49 @@ class ReleaseSbomTests(unittest.TestCase):
                 member.type = tarfile.SYMTYPE
                 member.linkname = "outside"
                 handle.addfile(member)
+            destination = root / "extract"
+            destination.mkdir()
+            with self.assertRaisesRegex(SbomError, "regular file or directory"):
+                extract_archive(archive, destination)
+
+    def test_rejects_duplicate_tar_member(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "malicious.tar.gz"
+            content = b"duplicate\n"
+            with tarfile.open(archive, "w:gz") as handle:
+                for _ in range(2):
+                    member = tarfile.TarInfo("beforedone")
+                    member.size = len(content)
+                    handle.addfile(member, io.BytesIO(content))
+            destination = root / "extract"
+            destination.mkdir()
+            with self.assertRaisesRegex(SbomError, "duplicate member"):
+                extract_archive(archive, destination)
+
+    def test_rejects_zip_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "malicious.zip"
+            member = zipfile.ZipInfo("beforedone")
+            member.create_system = 3
+            member.external_attr = (stat.S_IFLNK | 0o777) << 16
+            with zipfile.ZipFile(archive, "w") as handle:
+                handle.writestr(member, "outside")
+            destination = root / "extract"
+            destination.mkdir()
+            with self.assertRaisesRegex(SbomError, "symlink is forbidden"):
+                extract_archive(archive, destination)
+
+    def test_rejects_zip_special_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "malicious.zip"
+            member = zipfile.ZipInfo("beforedone")
+            member.create_system = 3
+            member.external_attr = (stat.S_IFIFO | 0o600) << 16
+            with zipfile.ZipFile(archive, "w") as handle:
+                handle.writestr(member, "fifo")
             destination = root / "extract"
             destination.mkdir()
             with self.assertRaisesRegex(SbomError, "regular file or directory"):
