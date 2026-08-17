@@ -99,7 +99,15 @@ jobs:
       - name: Test formal release checksum contract
         run: python scripts/test_validate_release_checksums.py
 
-      - name: Test path-neutral release SBOM contract
+      - name: Test path-neutral release SBOM contract on Python 3.13
+        run: python scripts/test_generate_release_sbom.py
+
+      - name: Set up Python 3.11 for release SBOM compatibility
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+
+      - name: Test path-neutral release SBOM contract on Python 3.11
         run: python scripts/test_generate_release_sbom.py
 
       - name: Check GoReleaser configuration

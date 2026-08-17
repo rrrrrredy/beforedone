@@ -35,7 +35,9 @@ require a paid BeforeDone dependency or a cross-repository credential.
    `scripts/generate_release_sbom.py` so archive contents are scanned from a
    relative base path, the archive SHA-256 is bound into each SPDX document,
    and host paths are rejected before the document is accepted. GoReleaser is
-   configured with release upload disabled.
+   configured with release upload disabled. The wrapper supports Python 3.11
+   and newer; CI executes its archive-extraction contract on Python 3.11 and
+   3.13.
 6. Verify all local digests, inspect every archive, run the native binaries,
    scan the final notes and asset names for credentials or local paths, and
    confirm the tag commit is reachable from `main`.
