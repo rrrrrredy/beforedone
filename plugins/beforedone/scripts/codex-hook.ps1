@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$env:BEFOREDONE_PLUGIN_VERSION = "1.0.2"
+$env:BEFOREDONE_PLUGIN_VERSION = "1.1.0"
 
 $beforeDone = $null
 $currentDirectory = [IO.Path]::GetFullPath((Get-Location).Path).TrimEnd('\')

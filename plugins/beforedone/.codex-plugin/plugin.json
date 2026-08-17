@@ -1,6 +1,6 @@
 {
   "name": "beforedone",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Require fresh evidence before a coding agent claims completion, then reconstruct failed runs from observable events.",
   "author": {
     "name": "Song Luo",

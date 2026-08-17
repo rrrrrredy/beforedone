@@ -233,3 +233,147 @@ jobs:
           if ($missing.systemMessage -notmatch 'BeforeDone CLI is required' -or $missing.systemMessage -notmatch 'go install') {
             throw "unexpected CLI-missing hook output: $($missing | ConvertTo-Json -Compress)"
           }
+
+  deepseek-harness-bundle:
+    name: DSH Bundle (${{ matrix.os }}, Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node-version: ["22.19.0", "24"]
+
+    defaults:
+      run:
+        working-directory: integrations/deepseek-harness
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.19.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+          cache-dependency-path: integrations/deepseek-harness/pnpm-lock.yaml
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install Bundle dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify Bundle unit and Cordis lifecycle tests
+        run: pnpm verify
+
+      - name: Build current BeforeDone CLI
+        shell: pwsh
+        working-directory: .
+        run: |
+          $bin = Join-Path $env:RUNNER_TEMP 'beforedone-cli'
+          New-Item -ItemType Directory -Force $bin | Out-Null
+          $name = if ($IsWindows) { 'beforedone.exe' } else { 'beforedone' }
+          $cli = Join-Path $bin $name
+          go build -trimpath -ldflags '-X main.version=1.1.0-dev' -o $cli ./cmd/beforedone
+          "BEFOREDONE_CLI=$cli" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Run real SessionStore and local CLI integration
+        shell: pwsh
+        run: |
+          $env:BEFOREDONE_TEST_ROOT = Join-Path $env:RUNNER_TEMP 'dsh-beforedone-integration'
+          pnpm test:integration
+
+      - name: Pack release candidate
+        run: pnpm pack --pack-destination .pack
+
+  deepseek-harness-e2e:
+    name: DSH E2E (${{ matrix.os }}, Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node-version: "22.19.0"
+          - os: windows-latest
+            node-version: "24"
+
+    defaults:
+      run:
+        working-directory: integrations/deepseek-harness
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.19.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+          cache-dependency-path: integrations/deepseek-harness/pnpm-lock.yaml
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install Bundle dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build CLI and pack Bundle
+        shell: pwsh
+        run: |
+          pnpm pack --pack-destination .pack
+          $bin = Join-Path $env:RUNNER_TEMP 'beforedone-cli'
+          New-Item -ItemType Directory -Force $bin | Out-Null
+          $name = if ($IsWindows) { 'beforedone.exe' } else { 'beforedone' }
+          $cli = Join-Path $bin $name
+          Push-Location ../..
+          go build -trimpath -ldflags '-X main.version=1.1.0-dev' -o $cli ./cmd/beforedone
+          Pop-Location
+          "BEFOREDONE_CLI=$cli" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install isolated DeepSeek Harness runtime
+        shell: pwsh
+        run: |
+          $runtimeRoot = Join-Path $env:RUNNER_TEMP 'dsh-runtime'
+          New-Item -ItemType Directory -Force $runtimeRoot | Out-Null
+          Push-Location $runtimeRoot
+          pnpm init | Out-Null
+          pnpm `
+            --allow-build='@deepseek-ai/dsh-subprocess-local' `
+            --allow-build='@google/genai' `
+            --allow-build='koffi' `
+            --allow-build='node-pty' `
+            --allow-build='protobufjs' `
+            add --save-exact '@deepseek-ai/dsh@0.1.0-rc.6'
+          pnpm ignored-builds
+          Pop-Location
+
+      - name: Run deterministic install, gate, steering, and removal E2E
+        shell: pwsh
+        run: |
+          $runtimeRoot = Join-Path $env:RUNNER_TEMP 'dsh-runtime'
+          $tarball = (Get-ChildItem .pack -Filter 'dsh-beforedone-*.tgz' | Select-Object -First 1).FullName
+          $env:DSH_ENTRY = Join-Path $runtimeRoot 'node_modules/@deepseek-ai/dsh/lib/bin.js'
+          $env:DSH_TARBALL = $tarball
+          $env:DSH_E2E_ROOT = Join-Path $env:RUNNER_TEMP 'dsh-beforedone-e2e'
+          pnpm test:e2e:dsh

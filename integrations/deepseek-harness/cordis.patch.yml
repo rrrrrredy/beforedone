@@ -1,0 +1,8 @@
+- insert:
+    - id: beforedone
+      name: dsh-beforedone
+      config:
+        binary: beforedone
+        gateTimeoutMs: 60000
+        stdoutMaxBytes: 1048576
+        stderrMaxBytes: 262144
