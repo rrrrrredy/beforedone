@@ -3,24 +3,33 @@ name: Public release verification
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Formal SemVer release tag to verify
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: public-release-verification-${{ github.event.release.tag_name }}
+  group: public-release-verification-${{ github.event.release.tag_name || inputs.release_tag }}
   cancel-in-progress: false
 
 env:
-  RELEASE_TAG: ${{ github.event.release.tag_name }}
+  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
 
 jobs:
   release-assets:
     name: Verify formal release assets
-    if: startsWith(github.event.release.tag_name, 'v')
+    if: startsWith(github.event.release.tag_name || inputs.release_tag, 'v')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Check out release verifier
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
       - name: Require a final SemVer release
         shell: bash
         run: |
@@ -60,18 +69,14 @@ jobs:
             curl --fail --location --retry 12 --retry-delay 5 --retry-all-errors \
               --output "download/$asset" "$base/$asset"
           done
+          python3 scripts/validate_release_checksums.py \
+            --checksums download/checksums.txt --tag "$RELEASE_TAG"
           (cd download && sha256sum --check checksums.txt)
 
           python3 - <<'PY'
           import json
           from pathlib import Path
 
-          checksum_lines = [
-              line for line in Path('download/checksums.txt').read_text(encoding='utf-8').splitlines()
-              if line.strip()
-          ]
-          if len(checksum_lines) != 6:
-              raise SystemExit(f'expected 6 archive checksums, found {len(checksum_lines)}')
           sboms = sorted(Path('download').glob('*.sbom.spdx.json'))
           if len(sboms) != 6:
               raise SystemExit(f'expected 6 SPDX documents, found {len(sboms)}')
@@ -105,7 +110,7 @@ jobs:
 
   platform-smoke:
     name: Public smoke (${{ matrix.os }})
-    if: startsWith(github.event.release.tag_name, 'v')
+    if: startsWith(github.event.release.tag_name || inputs.release_tag, 'v')
     needs: release-assets
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
