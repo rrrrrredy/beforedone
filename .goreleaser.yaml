@@ -94,10 +94,6 @@ changelog:
       - Merge branch
 
 release:
-  draft: true
-  replace_existing_draft: true
-  replace_existing_artifacts: true
-  prerelease: false
-  name_template: "BeforeDone {{ .Tag }}"
+  disable: true
 
 report_sizes: true

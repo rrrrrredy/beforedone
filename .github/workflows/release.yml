@@ -1,84 +1,46 @@
-name: Release
+name: Public release verification
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [published]
 
 permissions:
-  contents: write
-  id-token: write
-  attestations: write
+  contents: read
 
 concurrency:
-  group: release-${{ github.ref_name }}
+  group: public-release-verification-${{ github.event.release.tag_name }}
   cancel-in-progress: false
 
-jobs:
-  release:
-    name: Build draft ${{ github.ref_name }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    steps:
-      - name: Check out tag and full history
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          fetch-depth: 0
+env:
+  RELEASE_TAG: ${{ github.event.release.tag_name }}
 
-      - name: Require a final SemVer tag on main
+jobs:
+  release-assets:
+    name: Verify formal release assets
+    if: startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Require a final SemVer release
         shell: bash
         run: |
-          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Release tags must be final SemVer tags such as v1.0.0."
-            exit 1
-          fi
-          git fetch --no-tags origin main
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "The release commit is not reachable from main."
             exit 1
           fi
 
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version-file: go.mod
-          cache: true
+          go-version: "1.26.x"
+          cache: false
 
-      - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
-        with:
-          python-version: "3.13"
-
-      - name: Re-run release quality gates
+      - name: Download and verify the complete public asset matrix
         shell: bash
         run: |
-          go mod verify
-          go vet ./...
-          go test -count=1 ./...
-          go run ./cmd/beforedone adapter test fixtures/adapters
-          python scripts/sync_plugin_skills.py --check
-          python scripts/validate_distribution.py \
-            --expected-version "${GITHUB_REF_NAME#v}"
-
-      - name: Install Syft for SPDX SBOM generation
-        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0
-        with:
-          syft-version: v1.44.0
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
-        with:
-          distribution: goreleaser
-          version: v2.17.0
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Verify release matrix, checksums, SBOMs, and manifests
-        shell: bash
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          expected=(
+          version="${RELEASE_TAG#v}"
+          base="https://github.com/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG"
+          archives=(
             "beforedone_${version}_darwin_amd64.tar.gz"
             "beforedone_${version}_darwin_arm64.tar.gz"
             "beforedone_${version}_linux_amd64.tar.gz"
@@ -86,21 +48,52 @@ jobs:
             "beforedone_${version}_windows_amd64.zip"
             "beforedone_${version}_windows_arm64.zip"
           )
-          for artifact in "${expected[@]}"; do
-            test -f "dist/$artifact" || { echo "missing dist/$artifact"; exit 1; }
+          mkdir download
+          for archive in "${archives[@]}"; do
+            curl --fail --location --retry 12 --retry-delay 5 --retry-all-errors \
+              --output "download/$archive" "$base/$archive"
+            curl --fail --location --retry 12 --retry-delay 5 --retry-all-errors \
+              --output "download/$archive.sbom.spdx.json" \
+              "$base/$archive.sbom.spdx.json"
           done
-          (cd dist && sha256sum --check checksums.txt)
+          for asset in checksums.txt beforedone.rb beforedone.json; do
+            curl --fail --location --retry 12 --retry-delay 5 --retry-all-errors \
+              --output "download/$asset" "$base/$asset"
+          done
+          (cd download && sha256sum --check checksums.txt)
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          checksum_lines = [
+              line for line in Path('download/checksums.txt').read_text(encoding='utf-8').splitlines()
+              if line.strip()
+          ]
+          if len(checksum_lines) != 6:
+              raise SystemExit(f'expected 6 archive checksums, found {len(checksum_lines)}')
+          sboms = sorted(Path('download').glob('*.sbom.spdx.json'))
+          if len(sboms) != 6:
+              raise SystemExit(f'expected 6 SPDX documents, found {len(sboms)}')
+          for path in sboms:
+              with path.open(encoding='utf-8') as handle:
+                  document = json.load(handle)
+              if document.get('spdxVersion') != 'SPDX-2.3':
+                  raise SystemExit(f'{path} is not an SPDX 2.3 document')
+          PY
+
+          ruby -c download/beforedone.rb
+          python3 -m json.tool download/beforedone.json >/dev/null
 
           for os in darwin linux windows; do
             for arch in amd64 arm64; do
-              archive="dist/beforedone_${version}_${os}_${arch}"
-              target="dist/inspect/${os}-${arch}"
+              target="inspect/${os}-${arch}"
               mkdir -p "$target"
               if [[ "$os" == windows ]]; then
-                unzip -q "${archive}.zip" -d "$target"
+                unzip -q "download/beforedone_${version}_${os}_${arch}.zip" -d "$target"
                 binary="$target/beforedone.exe"
               else
-                tar -xzf "${archive}.tar.gz" -C "$target"
+                tar -xzf "download/beforedone_${version}_${os}_${arch}.tar.gz" -C "$target"
                 binary="$target/beforedone"
               fi
               metadata="$(go version -m "$binary")"
@@ -108,62 +101,14 @@ jobs:
               grep -F "GOARCH=$arch" <<<"$metadata" >/dev/null
             done
           done
+          test "$(inspect/linux-amd64/beforedone version)" = "beforedone $version"
 
-          python - <<'PY'
-          import json
-          from pathlib import Path
-
-          sboms = sorted(Path("dist").glob("*.sbom.spdx.json"))
-          if len(sboms) != 6:
-              raise SystemExit(f"expected 6 archive SBOMs, found {len(sboms)}")
-          for path in sboms:
-              with path.open(encoding="utf-8") as handle:
-                  document = json.load(handle)
-              if document.get("spdxVersion") != "SPDX-2.3":
-                  raise SystemExit(f"{path} is not an SPDX 2.3 document")
-              print(f"validated {path}")
-          PY
-
-          cask="$(find dist -type f -name beforedone.rb -print -quit)"
-          scoop="$(find dist -type f -name beforedone.json -print -quit)"
-          test -n "$cask" || { echo "missing generated Homebrew cask"; exit 1; }
-          test -n "$scoop" || { echo "missing generated Scoop manifest"; exit 1; }
-          ruby -c "$cask"
-          python -m json.tool "$scoop" >/dev/null
-
-          mkdir -p dist/package-manifests
-          cp "$cask" dist/package-manifests/beforedone.rb
-          cp "$scoop" dist/package-manifests/beforedone.json
-
-          mkdir -p dist/smoke
-          tar -xzf "dist/beforedone_${version}_linux_amd64.tar.gz" -C dist/smoke
-          dist/smoke/beforedone --help >/dev/null
-
-      - name: Attach package-manager assets to the release
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload "$GITHUB_REF_NAME" \
-            dist/package-manifests/beforedone.rb \
-            dist/package-manifests/beforedone.json \
-            --clobber
-
-      - name: Attest released archives and checksums
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
-        with:
-          subject-path: |
-            dist/*.tar.gz
-            dist/*.zip
-            dist/checksums.txt
-            dist/package-manifests/beforedone.rb
-            dist/package-manifests/beforedone.json
-
-  draft-smoke:
-    name: Draft artifact smoke test on ${{ matrix.os }}
-    needs: release
+  platform-smoke:
+    name: Public smoke (${{ matrix.os }})
+    if: startsWith(github.event.release.tag_name, 'v')
+    needs: release-assets
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -184,136 +129,13 @@ jobs:
           go-version: "1.26.x"
           cache: false
 
-      - name: Download draft release assets with authentication
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          artifact="beforedone_${version}_${{ matrix.artifact_os }}_amd64.${{ matrix.archive_ext }}"
-          gh release download "$GITHUB_REF_NAME" \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern "$artifact" \
-            --pattern checksums.txt \
-            --dir download
-          printf '%s' "$artifact" > download/artifact-name
-
-      - name: Verify and run on Linux
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          artifact="$(cat download/artifact-name)"
-          expected="$(grep "  $artifact$" download/checksums.txt | cut -d' ' -f1)"
-          actual="$(sha256sum "download/$artifact" | cut -d' ' -f1)"
-          test -n "$expected" && test "$actual" = "$expected"
-          mkdir extracted
-          tar -xzf "download/$artifact" -C extracted
-          extracted/beforedone --help >/dev/null
-
-      - name: Verify and run on macOS
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          artifact="$(cat download/artifact-name)"
-          expected="$(grep "  $artifact$" download/checksums.txt | cut -d' ' -f1)"
-          actual="$(shasum -a 256 "download/$artifact" | cut -d' ' -f1)"
-          test -n "$expected" && test "$actual" = "$expected"
-          mkdir extracted
-          tar -xzf "download/$artifact" -C extracted
-          extracted/beforedone --help >/dev/null
-
-      - name: Verify and run on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $artifact = Get-Content download/artifact-name -Raw
-          $artifact = $artifact.Trim()
-          $line = Get-Content download/checksums.txt |
-            Where-Object { $_ -match "  $([regex]::Escape($artifact))$" } |
-            Select-Object -First 1
-          if (-not $line) { throw "No checksum for $artifact" }
-          $expected = ($line -split '\s+')[0].ToLowerInvariant()
-          $actual = (Get-FileHash "download/$artifact" -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($actual -ne $expected) { throw "Checksum mismatch for $artifact" }
-          Expand-Archive "download/$artifact" -DestinationPath extracted
-          & ./extracted/beforedone.exe --help | Out-Null
-          if ($LASTEXITCODE -ne 0) { throw "beforedone --help failed" }
-
-      - name: Verify tag-based go install before publishing on Unix
+      - name: Download public assets on Unix
         if: runner.os != 'Windows'
         shell: bash
-        env:
-          GOPROXY: direct
-          GH_TOKEN: ""
-          GITHUB_TOKEN: ""
         run: |
-          mkdir "$RUNNER_TEMP/beforedone-go-install"
-          GOBIN="$RUNNER_TEMP/beforedone-go-install" \
-            go install "github.com/rrrrrredy/beforedone/cmd/beforedone@$GITHUB_REF_NAME"
-          reported="$("$RUNNER_TEMP/beforedone-go-install/beforedone" version)"
-          test "$reported" = "beforedone ${GITHUB_REF_NAME#v}"
-
-      - name: Verify tag-based go install before publishing on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        env:
-          GOPROXY: direct
-          GH_TOKEN: ""
-          GITHUB_TOKEN: ""
-        run: |
-          $env:GOBIN = Join-Path $env:RUNNER_TEMP 'beforedone-go-install'
-          New-Item -ItemType Directory -Force $env:GOBIN | Out-Null
-          go install "github.com/rrrrrredy/beforedone/cmd/beforedone@$env:GITHUB_REF_NAME"
-          if ($LASTEXITCODE -ne 0) { throw 'go install failed' }
-          $reported = (& (Join-Path $env:GOBIN 'beforedone.exe') version).Trim()
-          if ($reported -ne "beforedone $($env:GITHUB_REF_NAME.TrimStart('v'))") {
-            throw "go install reported unexpected version: $reported"
-          }
-
-  publish:
-    name: Publish tested draft release
-    needs: draft-smoke
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Make release public and mark latest
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >-
-          gh release edit "$GITHUB_REF_NAME"
-          --repo "$GITHUB_REPOSITORY"
-          --draft=false
-          --latest
-
-  public-smoke:
-    name: Anonymous public install smoke on ${{ matrix.os }}
-    needs: publish
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            artifact_os: linux
-            archive_ext: tar.gz
-          - os: macos-latest
-            artifact_os: darwin
-            archive_ext: tar.gz
-          - os: windows-latest
-            artifact_os: windows
-            archive_ext: zip
-    steps:
-      - name: Download public assets without credentials on Unix
-        if: runner.os != 'Windows'
-        shell: bash
-        env:
-          GH_TOKEN: ""
-          GITHUB_TOKEN: ""
-        run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_TAG#v}"
           artifact="beforedone_${version}_${{ matrix.artifact_os }}_amd64.${{ matrix.archive_ext }}"
-          base="https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME"
+          base="https://github.com/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG"
           mkdir download
           curl --fail --location --retry 5 --retry-all-errors \
             --output "download/$artifact" "$base/$artifact"
@@ -321,22 +143,19 @@ jobs:
             --output download/checksums.txt "$base/checksums.txt"
           printf '%s' "$artifact" > download/artifact-name
 
-      - name: Download public assets without credentials on Windows
+      - name: Download public assets on Windows
         if: runner.os == 'Windows'
         shell: pwsh
-        env:
-          GH_TOKEN: ""
-          GITHUB_TOKEN: ""
         run: |
-          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          $version = $env:RELEASE_TAG.TrimStart('v')
           $artifact = "beforedone_${version}_${{ matrix.artifact_os }}_amd64.${{ matrix.archive_ext }}"
-          $base = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:GITHUB_REF_NAME"
+          $base = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:RELEASE_TAG"
           New-Item -ItemType Directory -Force download | Out-Null
           Invoke-WebRequest -Uri "$base/$artifact" -OutFile "download/$artifact"
           Invoke-WebRequest -Uri "$base/checksums.txt" -OutFile download/checksums.txt
           Set-Content -NoNewline download/artifact-name $artifact
 
-      - name: Verify and run public archive on Linux
+      - name: Verify and run the public archive on Linux
         if: runner.os == 'Linux'
         shell: bash
         run: |
@@ -346,9 +165,9 @@ jobs:
           test -n "$expected" && test "$actual" = "$expected"
           mkdir extracted
           tar -xzf "download/$artifact" -C extracted
-          test "$(extracted/beforedone version)" = "beforedone ${GITHUB_REF_NAME#v}"
+          test "$(extracted/beforedone version)" = "beforedone ${RELEASE_TAG#v}"
 
-      - name: Verify and run public archive on macOS
+      - name: Verify and run the public archive on macOS
         if: runner.os == 'macOS'
         shell: bash
         run: |
@@ -358,9 +177,9 @@ jobs:
           test -n "$expected" && test "$actual" = "$expected"
           mkdir extracted
           tar -xzf "download/$artifact" -C extracted
-          test "$(extracted/beforedone version)" = "beforedone ${GITHUB_REF_NAME#v}"
+          test "$(extracted/beforedone version)" = "beforedone ${RELEASE_TAG#v}"
 
-      - name: Verify and run public archive on Windows
+      - name: Verify and run the public archive on Windows
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -374,22 +193,37 @@ jobs:
           if ($actual -ne $expected) { throw "Checksum mismatch for $artifact" }
           Expand-Archive "download/$artifact" -DestinationPath extracted
           $reported = (& ./extracted/beforedone.exe version).Trim()
-          if ($reported -ne "beforedone $($env:GITHUB_REF_NAME.TrimStart('v'))") {
+          if ($reported -ne "beforedone $($env:RELEASE_TAG.TrimStart('v'))") {
             throw "archive reported unexpected version: $reported"
           }
 
-  redraft-on-public-smoke-failure:
-    name: Re-draft a release that failed public verification
-    needs: public-smoke
-    if: ${{ failure() && !cancelled() }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Remove failed release from public visibility
+      - name: Verify tag-based go install on Unix
+        if: runner.os != 'Windows'
+        shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >-
-          gh release edit "$GITHUB_REF_NAME"
-          --repo "$GITHUB_REPOSITORY"
-          --draft=true
-          --latest=false
+          GOPROXY: direct
+          GH_TOKEN: ""
+          GITHUB_TOKEN: ""
+        run: |
+          mkdir "$RUNNER_TEMP/beforedone-go-install"
+          GOBIN="$RUNNER_TEMP/beforedone-go-install" \
+            go install "github.com/rrrrrredy/beforedone/cmd/beforedone@$RELEASE_TAG"
+          reported="$("$RUNNER_TEMP/beforedone-go-install/beforedone" version)"
+          test "$reported" = "beforedone ${RELEASE_TAG#v}"
+
+      - name: Verify tag-based go install on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          GOPROXY: direct
+          GH_TOKEN: ""
+          GITHUB_TOKEN: ""
+        run: |
+          $env:GOBIN = Join-Path $env:RUNNER_TEMP 'beforedone-go-install'
+          New-Item -ItemType Directory -Force $env:GOBIN | Out-Null
+          go install "github.com/rrrrrredy/beforedone/cmd/beforedone@$env:RELEASE_TAG"
+          if ($LASTEXITCODE -ne 0) { throw 'go install failed' }
+          $reported = (& (Join-Path $env:GOBIN 'beforedone.exe') version).Trim()
+          if ($reported -ne "beforedone $($env:RELEASE_TAG.TrimStart('v'))") {
+            throw "go install reported unexpected version: $reported"
+          }

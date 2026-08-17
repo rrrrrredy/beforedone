@@ -6,7 +6,8 @@ BeforeDone is an open-source evidence gate and incident replay toolkit for
 coding agents. It turns configured checks into receipts bound to their declared
 relevant-file scope, evaluates completion through one machine-readable gate,
 and reconstructs failed runs from observable events and artifacts. Codex hooks
-can block the first Stop attempt; the project-local Pi extension evaluates a
+can block the first Stop attempt; the DeepSeek Harness Bundle evaluates the
+native turn-stopping boundary; and the project-local Pi extension evaluates a
 settled run and can start one corrective continuation.
 
 [Website and guide](https://rrrrrredy.github.io/beforedone/)
@@ -28,7 +29,7 @@ the exact implementation it evaluated.
 
 [Read the report and artifact](https://doi.org/10.5281/zenodo.21766277)
 
-## One product, four delivery forms
+## One product, five delivery forms
 
 - **CLI:** the source of truth for checks, receipts, incidents, replay, and
   adapter validation.
@@ -37,6 +38,8 @@ the exact implementation it evaluated.
   to the CLI.
 - **Standalone Skills Pack:** the same two workflows without lifecycle hooks or
   Stop enforcement.
+- **DeepSeek Harness community Bundle:** native session-event capture plus a
+  pre-completion gate and one bounded corrective continuation.
 - **Project-local Pi extension:** bounded Pi lifecycle capture plus a
   post-settlement evidence decision and one corrective continuation.
 
@@ -55,6 +58,9 @@ hooks runs the lifecycle integration twice.
 For Pi, use `beforedone setup pi`. Do not load another copy of the generated
 extension in the same Pi runtime.
 
+For DeepSeek Harness, install `dsh-beforedone` into the selected profile. Do
+not combine it with another BeforeDone lifecycle adapter for the same session.
+
 ## Requirements
 
 - A Git repository. BeforeDone resolves its local runtime through Git.
@@ -63,6 +69,8 @@ extension in the same Pi runtime.
 - The verifier programs named in `.beforedone.yaml`, such as `go`, `npm`, or
   `pytest`.
 - Codex only if you use the Plugin, standalone Skills, or project-local hooks.
+- DeepSeek Harness `0.1.0-rc.6` and Node.js 22.19+ or 24+ only if you use the
+  `dsh-beforedone` community Bundle.
 - A current Pi release exposing `agent_settled`, `pi.exec`, `pi.appendEntry`,
   and `pi.sendUserMessage` only if you use the Pi integration.
 
@@ -81,7 +89,7 @@ verify it against `checksums.txt`, and put the `beforedone` executable on
 `PATH`.
 
 To install a reproducible version with Go, replace `@latest` with a release tag,
-for example `@v1.0.2`.
+for example `@v1.1.0`.
 
 ## 2. Initialize a repository
 
@@ -255,8 +263,8 @@ $skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skill
 $skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skills/investigate-agent-incident
 ```
 
-The skills become available on the next Codex turn. To pin them to v1.0.2,
-replace `/tree/main/` with `/tree/v1.0.2/` in both URLs.
+The skills become available on the next Codex turn. To pin them to v1.1.0,
+replace `/tree/main/` with `/tree/v1.1.0/` in both URLs.
 
 You can also install both through the third-party `skills.sh` CLI. BeforeDone
 itself has no telemetry, but `skills.sh` is a separate tool and may collect its
@@ -303,6 +311,32 @@ the BeforeDone project hooks with:
 ```sh
 beforedone setup codex --remove
 ```
+
+### DeepSeek Harness: community Bundle
+
+Install BeforeDone CLI `v1.1.0` or newer, initialize the target repository,
+then add the Bundle to the Harness profile you use:
+
+```sh
+dsh plugin --profile headless add dsh-beforedone@0.1.0
+dsh --profile headless --dump-config
+```
+
+The Bundle subscribes to the native append-only session log, flushes normalized
+metadata through the Adapter Kit, and runs `beforedone gate --json` at
+`agent/turn-stopping`. A blocking or unsafe result becomes one durable steering
+message. The next stop is reevaluated, but the same turn is never forced more
+than once.
+
+Prompt text, reasoning, tool arguments, and tool output are not copied into
+`.git/beforedone`; the normalized ledger contains the local session working
+directory, lifecycle identifiers, message source/plugin names, tool names, and
+result status. Missing CLI support, timeouts, truncated output, partial
+ingestion, and damaged JSON fail loud instead of becoming an implicit success.
+
+Full compatibility, configuration, test, privacy, and removal instructions are
+in [`integrations/deepseek-harness/README.md`](integrations/deepseek-harness/README.md).
+This is a community plugin, not an official DeepSeek plugin.
 
 ### Pi: project-local extension
 
@@ -450,17 +484,18 @@ agent integration, then manually remove `.git/beforedone` after reviewing the
 path. Remove `.beforedone.yaml` separately only if the repository should no
 longer define BeforeDone checks.
 
-The CLI, Plugin, and Skills contain no BeforeDone telemetry, hosted API, or
-cloud account. See the [privacy page](https://rrrrrredy.github.io/beforedone/privacy.html)
+The CLI, Plugins, Bundle, and Skills contain no BeforeDone telemetry, hosted
+API, or cloud account. See the [privacy page](https://rrrrrredy.github.io/beforedone/privacy.html)
 for the separate website and third-party-tool boundaries.
 
 ## Security and trust boundary
 
 BeforeDone is designed to catch missing or stale verifier evidence at a
 cooperative or fallible Agent's completion boundary. Codex can block its first
-Stop attempt; Pi can request one correction after settlement. It is not a
-security boundary against a malicious process with the same operating-system
-identity and repository write access.
+Stop attempt; DeepSeek Harness can request one correction before the turn
+closes; Pi can request one correction after settlement. It is not a security
+boundary against a malicious process with the same operating-system identity
+and repository write access.
 
 Such a process can read or replace `.git/beforedone/receipt.key`, edit
 `.beforedone.yaml`, alter runtime artifacts, or run a trivially passing allowed
@@ -477,12 +512,13 @@ before relying on receipts in a hostile environment.
 ## Adapters
 
 The v1 normalized event contract covers `SessionStarted`, `PromptSubmitted`,
-`ToolStarted`, `ToolFinished`, `AgentStopping`, and `SessionEnded`. Codex is the
-supported pre-Stop adapter; `beforedone setup pi` supplies a Pi adapter
-whose `stop_retry` capability means one post-settlement continuation, not a
-pre-settlement block. The public schemas, fixtures, and `beforedone adapter
-test` command form an Adapter Kit for future integrations; their presence is
-not a compatibility promise for other agents. A normalized event is limited to
+`ToolStarted`, `ToolFinished`, `AgentStopping`, and `SessionEnded`. Codex and
+the `dsh-beforedone` community Bundle are supported pre-completion adapters;
+`beforedone setup pi` supplies a Pi adapter whose `stop_retry` capability means
+one post-settlement continuation, not a pre-settlement block. The public
+schemas, fixtures, and `beforedone adapter test` command form an Adapter Kit
+for future integrations; their presence is not a compatibility promise for
+other agents. A normalized event is limited to
 256 attributes and 1 MiB after JSON encoding; the local
 event ledger is read fail-closed once it exceeds 64 MiB. Review and rotate the
 ledger before that boundary if a long-running repository produces many events.
@@ -499,7 +535,7 @@ the version mismatch is resolved.
 
 ## Upgrade and complete removal
 
-All four delivery forms share one SemVer release. Upgrade the CLI first, then
+All five delivery forms share the BeforeDone compatibility boundary. Upgrade the CLI first, then
 refresh the selected integration using the instructions above. Run `beforedone
 doctor` in each configured repository after upgrading.
 
@@ -507,7 +543,9 @@ For a complete removal:
 
 1. uninstall the Plugin in the Plugins Directory, remove the two standalone
    skill directories, run `beforedone setup codex --remove`, or run
-   `beforedone setup pi --remove`—whichever integration you selected;
+   `beforedone setup pi --remove`, or run
+   `dsh plugin --profile <profile> remove dsh-beforedone`—whichever integration
+   you selected;
 2. locate the CLI with `command -v beforedone` on macOS/Linux or
    `Get-Command beforedone` in PowerShell, then remove the binary you installed;
 3. optionally remove `.git/beforedone` and `.beforedone.yaml` from each

@@ -2,9 +2,10 @@
 
 The canonical release is the GitHub Release created from a final `vMAJOR.MINOR.PATCH`
 tag. It contains six archives, SHA-256 checksums, one SPDX 2.3 SBOM per archive,
-and generated Homebrew/Scoop manifests. An Actions-built release also contains
-GitHub/Sigstore provenance attestations. A locally built manual release must say
-that it has no GitHub OIDC provenance rather than implying that it does.
+and generated Homebrew/Scoop manifests. The current release path is locally
+built and must say that it has no GitHub OIDC provenance rather than implying
+that it does. The repository workflow never creates, edits, hides, or republishes
+a GitHub Release; it verifies an already public formal release.
 
 ## Supported release matrix
 
@@ -14,50 +15,39 @@ that it has no GitHub OIDC provenance rather than implying that it does.
 | Linux | amd64, arm64 | `.tar.gz` |
 | Windows | amd64, arm64 | `.zip` |
 
-All binaries are statically compiled with `CGO_ENABLED=0`. Neither release mode
-requires a paid BeforeDone dependency. The Actions mode uses the repository's
-built-in `GITHUB_TOKEN`, but it still depends on GitHub Actions being enabled and
-available for the publishing account.
+All binaries are statically compiled with `CGO_ENABLED=0`. The release does not
+require a paid BeforeDone dependency or a cross-repository credential.
 
-## Actions release procedure
+## Formal-only release procedure
 
 1. Confirm the `CI`, `Security`, `Dependency Review`, and Pages checks are green
    on `main`.
 2. Confirm the plugin manifest, standalone skills, and CLI all report the same
    version that will be tagged.
-3. Create and push an annotated final SemVer tag, for example `v1.0.0`.
-4. Watch the `Release` workflow. GoReleaser first creates a draft; three fresh
-   runners download, checksum, extract, and execute the public-format artifacts.
-   Only then does the workflow make the release public. Do not create or edit
-   assets by hand while it is running.
-5. Verify the published release from a clean Windows, macOS, and Linux machine.
-6. In the two package repositories, manually run the included update workflows
-   with the same tag.
-
-The release job rejects prerelease-shaped tags and tags whose commit is not
-reachable from `main`.
-
-## Manual no-Actions release procedure
-
-Use this mode when repository Actions are intentionally disabled or no runner
-quota is available.
-
-1. Confirm the release commit is on public `main`, versions agree, and Actions
-   are disabled so publishing the tag cannot start a workflow accidentally.
-2. Run the full Go suite, distribution validator, workflow lint, and a full
+3. Keep release notes and every candidate asset in a local release directory;
+   no GitHub object is used as a staging surface.
+4. Run the full Go suite, distribution validator, workflow lint, and a full
    Git-history secret scan locally. Record the exact tool versions and source
    commit used.
-3. Build the six archives, checksums, six SPDX SBOMs, and package manifests with
-   the pinned local GoReleaser and Syft versions.
-4. Create a draft GitHub Release targeting the exact commit. GitHub may create a
-   lightweight tag when the Release creates the tag; an annotated tag is not a
-   requirement for this mode. Never rewrite an already published release tag
-   merely to change its tag object type.
-5. Upload every asset, download the complete draft into a new directory, compare
-   all SHA-256 digests with the local build, and execute at least one downloaded
-   native binary before publishing the draft.
-6. Verify the public `releases/latest` route and an unauthenticated asset download.
-   State explicitly that a manual release has no GitHub OIDC build provenance.
+5. Create the annotated final SemVer tag locally, for example `v1.1.0`. Build
+   the six archives, checksums, six SPDX SBOMs, and package manifests with the
+   pinned GoReleaser and Syft versions. GoReleaser is configured with release
+   upload disabled.
+6. Verify all local digests, inspect every archive, run the native binaries,
+   scan the final notes and asset names for credentials or local paths, and
+   confirm the tag commit is reachable from `main`.
+7. Push the tag, verify tag-based `go install`, then create the final GitHub
+   Release once with the prepared title, notes, complete asset set, and latest
+   marker. Do not use a public GitHub object to hold intermediate content.
+8. Let `Public release verification` anonymously download and test the formal
+   assets on Windows, macOS, and Linux. It has read-only repository permission
+   and cannot change Release state.
+9. In the two package repositories, run the included update workflows with the
+   same tag after the public verification passes.
+
+If public verification finds a defect, preserve the released record, investigate
+locally, and publish a corrected version only after the new candidate passes the
+same gates.
 
 ## Homebrew and Scoop without a cross-repository token
 
