@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -193,6 +194,93 @@ func TestAppendEventsRejectsDuplicateIDsAcrossConcurrentWriters(t *testing.T) {
 	}
 	if len(events) != 1 || events[0].ID != event.ID {
 		t.Fatalf("concurrent duplicate ledger = %+v", events)
+	}
+}
+
+func TestEventLedgerLockRetriesTransientFirstUseOpen(t *testing.T) {
+	repo, _ := newHookTestRepo(t, []string{"git", "status", "--short"})
+	attempts := 0
+	runtimeRoot, lockFile, err := openEventLockHandle(
+		repo,
+		time.Now().Add(time.Second),
+		func(root *os.Root) (*os.File, error) {
+			attempts++
+			if attempts == 1 {
+				return nil, &os.PathError{Op: "openat", Path: "events.lock", Err: os.ErrNotExist}
+			}
+			return openOrCreateEventLock(root)
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer runtimeRoot.Close()
+	defer lockFile.Close()
+	if attempts != 2 {
+		t.Fatalf("lock open attempts = %d, want 2", attempts)
+	}
+}
+
+func TestEventLedgerLockDoesNotRetryNonTransientOpenErrors(t *testing.T) {
+	repo, _ := newHookTestRepo(t, []string{"git", "status", "--short"})
+	attempts := 0
+	runtimeRoot, lockFile, err := openEventLockHandle(
+		repo,
+		time.Now().Add(time.Second),
+		func(*os.Root) (*os.File, error) {
+			attempts++
+			return nil, &os.PathError{Op: "openat", Path: "events.lock", Err: os.ErrPermission}
+		},
+	)
+	if runtimeRoot != nil {
+		runtimeRoot.Close()
+	}
+	if lockFile != nil {
+		lockFile.Close()
+	}
+	if err == nil || !errors.Is(err, os.ErrPermission) {
+		t.Fatalf("lock open error = %v, want permission failure", err)
+	}
+	if attempts != 1 {
+		t.Fatalf("lock open attempts = %d, want 1", attempts)
+	}
+}
+
+func TestEventLedgerLockCreationIsSafeAcrossConcurrentFirstUse(t *testing.T) {
+	repo, _ := newHookTestRepo(t, []string{"git", "status", "--short"})
+	const writers = 32
+	results := make(chan error, writers)
+	start := make(chan struct{})
+	for range writers {
+		go func() {
+			<-start
+			if err := repo.EnsureRuntime(); err != nil {
+				results <- err
+				return
+			}
+			release, err := acquireEventLedgerLock(repo)
+			if err == nil {
+				release()
+			}
+			results <- err
+		}()
+	}
+	close(start)
+	var firstErr error
+	for range writers {
+		if err := <-results; err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	if firstErr != nil {
+		t.Fatalf("concurrent first-use lock acquisition: %v", firstErr)
+	}
+	info, err := os.Stat(filepath.Join(repo.RuntimeDir, "events.lock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.Mode().IsRegular() {
+		t.Fatalf("event lock mode = %v, want regular file", info.Mode())
 	}
 }
 

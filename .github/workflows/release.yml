@@ -146,7 +146,6 @@ jobs:
             --output "download/$artifact" "$base/$artifact"
           curl --fail --location --retry 5 --retry-all-errors \
             --output download/checksums.txt "$base/checksums.txt"
-          printf '%s' "$artifact" > download/artifact-name
 
       - name: Download public assets on Windows
         if: runner.os == 'Windows'
@@ -158,13 +157,13 @@ jobs:
           New-Item -ItemType Directory -Force download | Out-Null
           Invoke-WebRequest -Uri "$base/$artifact" -OutFile "download/$artifact"
           Invoke-WebRequest -Uri "$base/checksums.txt" -OutFile download/checksums.txt
-          Set-Content -NoNewline download/artifact-name $artifact
 
       - name: Verify and run the public archive on Linux
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          artifact="$(cat download/artifact-name)"
+          version="${RELEASE_TAG#v}"
+          artifact="beforedone_${version}_${{ matrix.artifact_os }}_amd64.${{ matrix.archive_ext }}"
           expected="$(grep "  $artifact$" download/checksums.txt | cut -d' ' -f1)"
           actual="$(sha256sum "download/$artifact" | cut -d' ' -f1)"
           test -n "$expected" && test "$actual" = "$expected"
@@ -176,7 +175,8 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          artifact="$(cat download/artifact-name)"
+          version="${RELEASE_TAG#v}"
+          artifact="beforedone_${version}_${{ matrix.artifact_os }}_amd64.${{ matrix.archive_ext }}"
           expected="$(grep "  $artifact$" download/checksums.txt | cut -d' ' -f1)"
           actual="$(shasum -a 256 "download/$artifact" | cut -d' ' -f1)"
           test -n "$expected" && test "$actual" = "$expected"
@@ -188,7 +188,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $artifact = (Get-Content download/artifact-name -Raw).Trim()
+          $version = $env:RELEASE_TAG.TrimStart('v')
+          $artifact = "beforedone_${version}_${{ matrix.artifact_os }}_amd64.${{ matrix.archive_ext }}"
           $line = Get-Content download/checksums.txt |
             Where-Object { $_ -match "  $([regex]::Escape($artifact))$" } |
             Select-Object -First 1
@@ -206,7 +207,9 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         env:
-          GOPROXY: direct
+          GOPROXY: https://proxy.golang.org,direct
+          GONOPROXY: github.com/rrrrrredy/beforedone
+          GONOSUMDB: github.com/rrrrrredy/beforedone
           GH_TOKEN: ""
           GITHUB_TOKEN: ""
         run: |
@@ -220,7 +223,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         env:
-          GOPROXY: direct
+          GOPROXY: https://proxy.golang.org,direct
+          GONOPROXY: github.com/rrrrrredy/beforedone
+          GONOSUMDB: github.com/rrrrrredy/beforedone
           GH_TOKEN: ""
           GITHUB_TOKEN: ""
         run: |
