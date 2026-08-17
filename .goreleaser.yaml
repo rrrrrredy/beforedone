@@ -55,6 +55,17 @@ sboms:
     artifacts: archive
     documents:
       - "${artifact}.sbom.spdx.json"
+    cmd: python
+    args:
+      - ../scripts/generate_release_sbom.py
+      - --artifact
+      - "${artifact}"
+      - --document
+      - "${document}"
+      - --syft
+      - syft
+    env:
+      - SYFT_FILE_METADATA_CATALOGER_ENABLED=true
 
 homebrew_casks:
   - name: beforedone

@@ -31,8 +31,11 @@ require a paid BeforeDone dependency or a cross-repository credential.
    commit used.
 5. Create the annotated final SemVer tag locally, for example `v1.1.0`. Build
    the six archives, checksums, six SPDX SBOMs, and package manifests with the
-   pinned GoReleaser and Syft versions. GoReleaser is configured with release
-   upload disabled.
+   pinned GoReleaser and Syft versions. GoReleaser invokes
+   `scripts/generate_release_sbom.py` so archive contents are scanned from a
+   relative base path, the archive SHA-256 is bound into each SPDX document,
+   and host paths are rejected before the document is accepted. GoReleaser is
+   configured with release upload disabled.
 6. Verify all local digests, inspect every archive, run the native binaries,
    scan the final notes and asset names for credentials or local paths, and
    confirm the tag commit is reachable from `main`.
