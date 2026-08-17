@@ -3,11 +3,14 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rrrrrredy/beforedone/internal/config"
 	stopgate "github.com/rrrrrredy/beforedone/internal/gate"
@@ -288,6 +291,13 @@ func assertSchemaOne(t *testing.T, raw string) {
 func newCLITestRepo(t *testing.T, argv []string) string {
 	t.Helper()
 	root := t.TempDir()
+	if runtime.GOOS == "windows" {
+		// Windows scanners can briefly keep freshly written receipt files in a
+		// delete-pending state. Run a bounded cleanup before testing.TempDir's
+		// own cleanup so this external delay cannot make a synchronous CLI test
+		// flaky. A directory that remains after the deadline still fails.
+		t.Cleanup(func() { removeWindowsCLITestRepo(t, root) })
+	}
 	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("fixture\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -310,6 +320,29 @@ func newCLITestRepo(t *testing.T, argv []string) string {
 		t.Fatal(err)
 	}
 	return root
+}
+
+func removeWindowsCLITestRepo(t *testing.T, root string) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	var lastErr error
+	for {
+		lastErr = os.RemoveAll(root)
+		if lastErr == nil {
+			if _, statErr := os.Lstat(root); os.IsNotExist(statErr) {
+				return
+			} else if statErr != nil {
+				lastErr = statErr
+			} else {
+				lastErr = fmt.Errorf("test repository still exists after RemoveAll")
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Errorf("remove Windows CLI test repository %s: %v", root, lastErr)
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }
 
 func runCLIGit(t *testing.T, dir string, args ...string) {
