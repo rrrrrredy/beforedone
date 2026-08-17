@@ -89,7 +89,7 @@ verify it against `checksums.txt`, and put the `beforedone` executable on
 `PATH`.
 
 To install a reproducible version with Go, replace `@latest` with a release tag,
-for example `@v1.1.0`.
+for example `@v1.1.1`.
 
 ## 2. Initialize a repository
 
@@ -263,8 +263,8 @@ $skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skill
 $skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skills/investigate-agent-incident
 ```
 
-The skills become available on the next Codex turn. To pin them to v1.1.0,
-replace `/tree/main/` with `/tree/v1.1.0/` in both URLs.
+The skills become available on the next Codex turn. To pin them to v1.1.1,
+replace `/tree/main/` with `/tree/v1.1.1/` in both URLs.
 
 You can also install both through the third-party `skills.sh` CLI. BeforeDone
 itself has no telemetry, but `skills.sh` is a separate tool and may collect its
@@ -314,7 +314,7 @@ beforedone setup codex --remove
 
 ### DeepSeek Harness: community Bundle
 
-Install BeforeDone CLI `v1.1.0` or newer, initialize the target repository,
+Install BeforeDone CLI `v1.1.1` or newer, initialize the target repository,
 then add the Bundle to the Harness profile you use:
 
 ```sh

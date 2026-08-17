@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 export const SOURCE = "deepseek-harness";
-export const MINIMUM_CLI_VERSION = "1.1.0";
+export const MINIMUM_CLI_VERSION = "1.1.1";
 export const MAXIMUM_CLI_MAJOR = 2;
 const MAX_EVENT_ID_CHARS = 256;
 const MAX_STEERING_CHARS = 12000;
@@ -160,7 +160,7 @@ export function assertCompatibleCliVersion(output) {
   const atLeastMinimum =
     version.major > 1 ||
     (version.major === 1 &&
-      (version.minor > 1 || (version.minor === 1 && version.patch >= 0)));
+      (version.minor > 1 || (version.minor === 1 && version.patch >= 1)));
   if (!atLeastMinimum || version.major >= MAXIMUM_CLI_MAJOR) {
     throw new Error(
       `dsh-beforedone requires BeforeDone CLI >=${MINIMUM_CLI_VERSION} <${MAXIMUM_CLI_MAJOR}; found ${version.raw}`,

@@ -7,7 +7,7 @@ This is a community plugin, not an official DeepSeek plugin.
 ## Compatibility
 
 - DeepSeek Harness / `@deepseek-ai/dsh`: `0.1.0-rc.6`
-- BeforeDone CLI: `>=1.1.0 <2`
+- BeforeDone CLI: `>=1.1.1 <2`
 - Node.js: `22.19.x` or `24+`
 
 The Bundle fails during activation when the CLI is missing, reports an unsupported version, or cannot be resolved in the Harness subprocess execution world.
@@ -17,7 +17,7 @@ The Bundle fails during activation when the CLI is missing, reports an unsupport
 Install and initialize the BeforeDone CLI in the target Git repository first:
 
 ```bash
-go install github.com/rrrrrredy/beforedone/cmd/beforedone@v1.1.0
+go install github.com/rrrrrredy/beforedone/cmd/beforedone@v1.1.1
 beforedone init
 beforedone doctor
 ```

@@ -55,7 +55,7 @@ function scriptedSubprocess(handler, calls) {
 
 function responseFor(spec, gateResult) {
   if (spec.argv[1] === "--version") {
-    return { stdout: "beforedone 1.1.0\n", stderr: "", exitCode: 0 };
+    return { stdout: "beforedone 1.1.1\n", stderr: "", exitCode: 0 };
   }
   if (spec.argv[1] === "adapter") {
     const events = JSON.parse(spec.stdio.stdin.data);
@@ -263,7 +263,7 @@ test("fails activation for a missing or incompatible CLI", async () => {
     });
     await assert.rejects(
       failedFiber.await(),
-      />=1\.1\.0 <2/,
+      />=1\.1\.1 <2/,
     );
     await failedFiber.dispose();
     await subprocessFiber.dispose();
