@@ -437,13 +437,9 @@ func ensureEventStoreDirs(repo *repository.Repository) (eventStorePaths, error) 
 }
 
 func acquireEventLedgerLock(repo *repository.Repository) (func(), error) {
-	runtimeRoot, err := openRuntimeRoot(repo)
+	deadline := time.Now().Add(eventLockWait)
+	runtimeRoot, lockFile, err := openEventLockHandle(repo, deadline, openOrCreateEventLock)
 	if err != nil {
-		return nil, err
-	}
-	lockFile, err := runtimeRoot.OpenFile("events.lock", os.O_CREATE|os.O_RDWR, 0o600)
-	if err != nil {
-		runtimeRoot.Close()
 		return nil, err
 	}
 	info, err := lockFile.Stat()
@@ -455,7 +451,6 @@ func acquireEventLedgerLock(repo *repository.Repository) (func(), error) {
 		}
 		return nil, errors.New("event ledger lock path is not a regular file")
 	}
-	deadline := time.Now().Add(eventLockWait)
 	for {
 		locked, err := tryEventFileLock(lockFile)
 		if err != nil {
@@ -475,8 +470,43 @@ func acquireEventLedgerLock(repo *repository.Repository) (func(), error) {
 			runtimeRoot.Close()
 			return nil, errors.New("timed out waiting for the event ledger lock")
 		}
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(eventLockPoll)
 	}
+}
+
+type eventLockOpener func(*os.Root) (*os.File, error)
+
+func openEventLockHandle(repo *repository.Repository, deadline time.Time, openLock eventLockOpener) (*os.Root, *os.File, error) {
+	for {
+		runtimeRoot, err := openRuntimeRoot(repo)
+		if err != nil {
+			return nil, nil, err
+		}
+		lockFile, err := openLock(runtimeRoot)
+		if err == nil {
+			return runtimeRoot, lockFile, nil
+		}
+		_ = runtimeRoot.Close()
+		// A concurrent first-use create can surface a transient missing entry on
+		// some filesystems. Reopen the rooted directory and retry only that error.
+		if !os.IsNotExist(err) || !time.Now().Before(deadline) {
+			return nil, nil, fmt.Errorf("open event ledger lock file: %w", err)
+		}
+		time.Sleep(eventLockPoll)
+	}
+}
+
+func openOrCreateEventLock(runtimeRoot *os.Root) (*os.File, error) {
+	// Exclusive creation gives exactly one first-use writer ownership of the
+	// directory entry. Every other writer opens the completed shared lock file.
+	lockFile, err := runtimeRoot.OpenFile("events.lock", os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
+	if err == nil {
+		return lockFile, nil
+	}
+	if !os.IsExist(err) {
+		return nil, err
+	}
+	return runtimeRoot.OpenFile("events.lock", os.O_RDWR, 0)
 }
 
 func openRuntimeRoot(repo *repository.Repository) (*os.Root, error) {

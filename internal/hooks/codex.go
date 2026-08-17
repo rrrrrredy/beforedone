@@ -29,6 +29,7 @@ const (
 	MaxEventAttributes  = 256
 	maxEventLedgerBytes = 64 << 20
 	eventLockWait       = 8 * time.Second
+	eventLockPoll       = 20 * time.Millisecond
 )
 
 const maxHookInput = 8 << 20
