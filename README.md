@@ -209,6 +209,12 @@ of silently omitting evidence. Submodule contents are not fingerprinted in v1:
 if a `relevant_files` pattern may cover a Git submodule or a path below it, the
 check fails closed instead of issuing reusable evidence.
 
+Prospective study plans and evolution ledgers belong to the research, memory,
+or runtime-evolution system that created them. They do not create or refresh a
+Completion Receipt. BeforeDone remains responsible only for the final
+configured checks and current relevant-file fingerprint; see the
+[evolution study boundary](docs/decisions/evolution-study-boundary.md).
+
 ## 3. Choose an agent integration
 
 ### Route A: Codex Git Marketplace Plugin
