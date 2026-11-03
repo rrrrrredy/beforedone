@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>BeforeDone Guide — Fresh evidence before done</title>
-  <meta name="description" content="Install, operate, and audit BeforeDone: the local evidence gate and incident replay toolkit for coding agents.">
+  <meta name="description" content="Connect an existing verifier, run affected checks, and confirm their freshness with one completion gate. Setup and daily usage for BeforeDone.">
   <meta name="theme-color" content="#0b0b0c">
   <meta property="og:type" content="website">
   <meta property="og:title" content="BeforeDone Guide — Fresh evidence before done">
@@ -34,7 +34,7 @@
     <section class="guide-hero" aria-labelledby="guide-title">
       <div class="guide-hero-copy">
         <h1 id="guide-title">Fresh evidence <span>before</span> done.</h1>
-        <p>With Codex, BeforeDone checks current, file-bound verifier receipts on the first Stop attempt and can request one corrective continuation. With Pi, the same gate runs after <code>agent_settled</code> and can start one corrective follow-on.</p>
+        <p>Connect the checks your project already uses. Run them through BeforeDone, then confirm whether the results still match your files. Add an agent integration when you want this completion check to run automatically.</p>
         <div class="hero-actions">
           <a class="button button-primary" href="#quickstart">Install CLI</a>
           <a class="button button-ghost" href="https://github.com/rrrrrredy/beforedone">View repository</a>
@@ -55,7 +55,7 @@
           <a href="#quickstart">00 Quickstart</a>
           <a href="#stop-gate">01 Stop Gate</a>
           <a href="#receipt">02 Evidence Receipt</a>
-          <a href="#replay">03 Incident Replay</a>
+          <a href="#replay">03 Advanced: Incident Replay</a>
           <a href="#install-routes">04 Install Routes</a>
           <a href="#security">05 Security Boundary</a>
           <a href="#commands">06 Command Reference</a>
@@ -70,36 +70,38 @@
       <article class="guide-content">
         <section class="guide-section" id="quickstart">
           <span class="guide-number">00</span>
-          <h2>30-Second Quickstart</h2>
-          <p>Install the local evidence engine, initialize the target Git repository, review the generated policy, and confirm the environment before adding an agent integration.</p>
+          <h2>Connect an existing check</h2>
+          <p>Install the CLI, then connect the command you already use. This Python example saves a single check covering source, tests, and project configuration.</p>
+          <p>Command-based initialization is available from the development source. Until the next release, install it with <code>go install github.com/rrrrrredy/beforedone/cmd/beforedone@main</code>. The published <code>v1.1.1</code> CLI can use <code>beforedone init</code> and edit <code>.beforedone.yaml</code> instead; it does not accept the new initialization options.</p>
           <div class="guide-code-block">
-            <div class="guide-code-head"><span>Shell</span><button type="button" data-copy="go install github.com/rrrrrredy/beforedone/cmd/beforedone@latest&#10;beforedone init&#10;beforedone doctor">Copy</button></div>
-            <pre><code>go install github.com/rrrrrredy/beforedone/cmd/beforedone@latest
-beforedone init
+            <div class="guide-code-head"><span>Development CLI · Python project</span><button type="button" data-copy="beforedone init --files &quot;src/**/*.py&quot; --files &quot;tests/**/*&quot; --files &quot;pyproject.toml&quot; -- python -m pytest&#10;beforedone doctor">Copy</button></div>
+            <pre><code>beforedone init --files "src/**/*.py" --files "tests/**/*" --files "pyproject.toml" -- python -m pytest
 beforedone doctor</code></pre>
           </div>
+          <p>Initialization saves everything after <code>--</code> as verifier arguments without executing it. Repeat <code>--files</code> for its inputs. A custom command defaults to <code>**/*</code> when no patterns are supplied; narrow that scope if it includes generated output or installed dependencies. Edit an existing configuration to change its command or scope.</p>
+          <div class="guide-code-block">
+            <div class="guide-code-head"><span>Daily workflow</span><button type="button" data-copy="beforedone check test&#10;beforedone gate">Copy</button></div>
+            <pre><code>beforedone check test
+beforedone gate</code></pre>
+          </div>
+          <p>The gate lists every required check and its freshness without rerunning verifiers. To reuse previous results, start with <code>gate</code> and rerun only checks needing new evidence. An active integration supplies the final gate automatically; a manual gate is optional on that route. Use <code>receipt</code> when you need details.</p>
           <p class="guide-callout"><strong>Then choose exactly one Codex route.</strong> The Git Marketplace Plugin, standalone Skills Pack, and project-local hooks are separate delivery forms; combining them duplicates workflows.</p>
           <p class="guide-callout"><strong>Using Pi?</strong> Run <code>beforedone setup pi</code>, review and trust the generated project extension, and remember that Pi correction happens after settlement rather than before the first final message.</p>
           <p class="guide-callout"><strong>Choose evidence before asking for PASS.</strong> BeforeDone verifies project-approved commands; it does not infer whether they fully cover a natural-language requirement. A user does not need to locate the exact bug, but the task needs observable acceptance criteria and a credible verifier. Treat non-Go <code>git status --short</code> initialization as scaffolding, never correctness proof.</p>
           <div class="guide-code-block">
             <div class="guide-code-head"><span>Prompt · configure once</span><button type="button" data-copy data-copy-target="#prompt-configure">Copy</button></div>
-            <pre><code id="prompt-configure">Help me configure BeforeDone for this repository. Inspect the existing test,
-build, lint, type-check, package-script, and CI configuration. Use
-`beforedone init` only as a starting point. Configure the smallest credible set
-of existing commands, include every file class that can affect each check, and
-report assumptions and coverage gaps. Do not add dependencies, use
-`git status --short` as proof of correctness, or invent a check merely to get
-PASS.</code></pre>
+            <pre><code id="prompt-configure">Connect this repository's existing verification command to BeforeDone. Reuse
+the project's normal checks and include their source, tests, fixtures, and build
+inputs in relevant_files. Use command-based init if supported by the installed
+CLI; otherwise edit the generated YAML. Keep the setup small and explain any
+task requirement the existing checks do not cover.</code></pre>
           </div>
           <div class="guide-code-block">
             <div class="guide-code-head"><span>Prompt · verify a task</span><button type="button" data-copy data-copy-target="#prompt-verify">Copy</button></div>
-            <pre><code id="prompt-verify">Use BeforeDone for this task. Turn my request into observable acceptance
-criteria, map them to existing tests or checks, and add the smallest regression
-test when coverage is missing and that change is within scope. Before saying
-done, run every required BeforeDone check and confirm fresh PASS receipts for
-the current files. If any criterion lacks credible evidence, report it as
-unverified instead of calling it PASS. Do not weaken checks merely to obtain
-PASS.</code></pre>
+            <pre><code id="prompt-verify">Use BeforeDone for this task. Run affected configured checks through BeforeDone
+and reuse results that still match the files. At handoff, use one gate result
+to confirm all required checks. Inspect individual receipts only if needed.
+Report any acceptance criterion the configured checks do not cover.</code></pre>
           </div>
         </section>
 
@@ -191,7 +193,7 @@ PASS.</code></pre>
             <table>
               <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
               <tbody>
-                <tr><td><code>beforedone init</code></td><td>Create a reviewed starter policy for the repository.</td></tr>
+                <tr><td><code>beforedone init [--files pattern]... [-- command args...]</code></td><td>Connect an existing verifier, or create the default starter configuration.</td></tr>
                 <tr><td><code>beforedone doctor</code></td><td>Check Git, policy, runtime directories, CLI, and optional agent integrations.</td></tr>
                 <tr><td><code>beforedone check &lt;id&gt;</code></td><td>Run one configured verifier and record a bounded receipt.</td></tr>
                 <tr><td><code>beforedone receipt [id]</code></td><td>Evaluate a Receipt against the current relevant files.</td></tr>
