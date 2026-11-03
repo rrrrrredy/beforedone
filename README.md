@@ -1,65 +1,20 @@
 # BeforeDone
 
-**Make coding agents prove they're done.**
+**Know whether your checks still match your code.**
 
-BeforeDone is an open-source evidence gate and incident replay toolkit for
-coding agents. It turns configured checks into receipts bound to their declared
-relevant-file scope, evaluates completion through one machine-readable gate,
-and reconstructs failed runs from observable events and artifacts. Codex hooks
-can block the first Stop attempt; the DeepSeek Harness Bundle evaluates the
-native turn-stopping boundary; and the project-local Pi extension evaluates a
-settled run and can start one corrective continuation.
+BeforeDone runs your existing verification commands and records which files
+they checked. Before a coding agent finishes, it checks whether those results
+still apply to the current work. Start with the CLI; add an agent integration
+when you want the completion check to run automatically. Incident reports and
+replay are available for investigating a failed run.
+
+It is most useful when a task continues after verification or when you want to
+reuse a previous result without rerunning an expensive check. If your normal
+test and CI workflow already makes this clear, the extra tool may add little.
+BeforeDone tracks configured verification; choosing checks that cover the task
+remains part of development.
 
 [Website and guide](https://rrrrrredy.github.io/beforedone/)
-
-## Evidence and technical report
-
-The empirical technical report freezes the protocol, 144 eligible confirmatory
-outcomes, analysis, and reproducibility artifact. One superseded attempt that
-produced no outcome is retained for audit and excluded from all effectiveness
-denominators. Every condition observed 0/60
-unsupported completions in the claim-supportable subset, so the report makes
-no superiority claim; it documents the mechanism, auditability, and measured
-verifier cost.
-
-[The separate `beforedone-paper` repository](https://github.com/rrrrrredy/beforedone-paper)
-contains the full protocol, run records, analysis code, and report sources. This
-keeps the product checkout focused on the CLI and preserves the study against
-the exact implementation it evaluated.
-
-[Read the report and artifact](https://doi.org/10.5281/zenodo.21766277)
-
-## One product, five delivery forms
-
-- **CLI:** the source of truth for checks, receipts, incidents, replay, and
-  adapter validation.
-- **Codex Git Marketplace Plugin:** the automatic experience. It bundles the
-  Stop Hook and both BeforeDone skills, while delegating all evidence decisions
-  to the CLI.
-- **Standalone Skills Pack:** the same two workflows without lifecycle hooks or
-  Stop enforcement.
-- **DeepSeek Harness community Bundle:** native session-event capture plus a
-  pre-completion gate and one bounded corrective continuation.
-- **Project-local Pi extension:** bounded Pi lifecycle capture plus a
-  post-settlement evidence decision and one corrective continuation.
-
-The CLI is required in every setup. For Codex, choose exactly one integration
-route:
-
-1. the Plugin for hooks plus both bundled skills;
-2. the standalone Skills Pack for a manual workflow; or
-3. project-local hooks from `beforedone setup codex` for the automatic gate
-   without installing the Plugin.
-
-Do not combine these routes in one Codex environment. The Plugin plus
-standalone Skills duplicates the workflows; the Plugin plus project-local
-hooks runs the lifecycle integration twice.
-
-For Pi, use `beforedone setup pi`. Do not load another copy of the generated
-extension in the same Pi runtime.
-
-For DeepSeek Harness, install `dsh-beforedone` into the selected profile. Do
-not combine it with another BeforeDone lifecycle adapter for the same session.
 
 ## Requirements
 
@@ -93,16 +48,34 @@ for example `@v1.1.1`.
 
 ## 2. Initialize a repository
 
-Run these commands from any directory inside the target Git repository:
+Command-based initialization is available from the development source. Until
+the next release, install it with:
 
 ```sh
-beforedone init
+go install github.com/rrrrrredy/beforedone/cmd/beforedone@main
+```
+
+Then connect an existing project command from the target Git repository. For
+a Python project, for example:
+
+```sh
+beforedone init --files "src/**/*.py" --files "tests/**/*" --files "pyproject.toml" -- python -m pytest
 beforedone doctor
 ```
 
-`init` creates `.beforedone.yaml` when it is missing and initializes local
-runtime data under `.git/beforedone`. It is safe to run again: an existing valid
-configuration is kept.
+The published `v1.1.1` CLI can use `beforedone init` and edit the generated YAML
+instead. It does not accept the new initialization options.
+
+Everything after `--` is saved as the argv of the `test` check; initialization
+does not run it. Put BeforeDone options, including `--json`, before `--`.
+Repeat `--files` for the inputs your command uses. Without `--files`, a custom
+command uses `**/*`; narrow that scope if it includes generated output or
+installed dependencies. Paths and commands are relative to the repository root.
+
+`init` creates `.beforedone.yaml` and local runtime data under `.git/beforedone`.
+Bare `beforedone init` keeps its existing behavior and can be rerun without
+replacing a valid configuration. If a configuration already exists, edit it to
+change the command or file scope; initialization options do not overwrite it.
 
 Review the generated configuration before running checks. Commands are argv
 arrays, not shell command strings:
@@ -144,25 +117,20 @@ the uncovered criterion as unverified.
 Configure a repository once:
 
 ```text
-Help me configure BeforeDone for this repository. Inspect the existing test,
-build, lint, type-check, package-script, and CI configuration. Use
-`beforedone init` only as a starting point. Configure the smallest credible set
-of existing commands, include every file class that can affect each check, and
-report assumptions and coverage gaps. Do not add dependencies, use
-`git status --short` as proof of correctness, or invent a check merely to get
-PASS.
+Connect this repository's existing verification command to BeforeDone. Reuse
+the project's normal checks and include their source, tests, fixtures, and build
+inputs in relevant_files. Use command-based init if supported by the installed
+CLI; otherwise edit the generated YAML. Keep the setup small and explain any
+task requirement the existing checks do not cover.
 ```
 
 Verify a task:
 
 ```text
-Use BeforeDone for this task. Turn my request into observable acceptance
-criteria, map them to existing tests or checks, and add the smallest regression
-test when coverage is missing and that change is within scope. Before saying
-done, run every required BeforeDone check and confirm fresh PASS receipts for
-the current files. If any criterion lacks credible evidence, report it as
-unverified instead of calling it PASS. Do not weaken checks merely to obtain
-PASS.
+Use BeforeDone for this task. Run affected configured checks through BeforeDone
+and reuse results that still match the files. At handoff, use one gate result
+to confirm all required checks. Inspect individual receipts only if needed.
+Report any acceptance criterion the configured checks do not cover.
 ```
 
 These prompts help Codex propose and apply the verification contract; they do
@@ -175,17 +143,26 @@ working-directory metadata so a reviewer can see what ran; those structural
 fields are not rewritten by output redaction. Use environment-based or native
 credential mechanisms, and review receipt/report metadata before sharing it.
 
-Run a configured check through BeforeDone, then inspect its effective result:
+### Daily workflow
+
+Run an affected check through BeforeDone, then confirm completion:
 
 ```sh
 beforedone check test
-beforedone receipt test
+beforedone gate
 ```
 
-Evaluate every required receipt without running a verifier:
+`gate` lists the verdict and freshness of each required check without running
+the verifiers. If a previous result may still apply, start with `gate` and rerun
+only checks that need fresh evidence. Changes outside a check's file scope do
+not require repeating it.
+
+An active agent integration supplies the final gate automatically. For that
+route, a separate manual gate is optional. Receipt inspection is for details or
+diagnosis, rather than an extra step after every check:
 
 ```sh
-beforedone gate
+beforedone receipt test
 beforedone gate --json
 ```
 
@@ -214,6 +191,38 @@ or runtime-evolution system that created them. They do not create or refresh a
 Completion Receipt. BeforeDone remains responsible only for the final
 configured checks and current relevant-file fingerprint; see the
 [evolution study boundary](docs/decisions/evolution-study-boundary.md).
+
+## One product, five delivery forms
+
+- **CLI:** the source of truth for checks, receipts, incidents, replay, and
+  adapter validation.
+- **Codex Git Marketplace Plugin:** the automatic experience. It bundles the
+  Stop Hook and both BeforeDone skills, while delegating all evidence decisions
+  to the CLI.
+- **Standalone Skills Pack:** the same two workflows without lifecycle hooks or
+  Stop enforcement.
+- **DeepSeek Harness community Bundle:** native session-event capture plus a
+  pre-completion gate and one bounded corrective continuation.
+- **Project-local Pi extension:** bounded Pi lifecycle capture plus a
+  post-settlement evidence decision and one corrective continuation.
+
+The CLI is required in every setup. For Codex, choose exactly one integration
+route:
+
+1. the Plugin for hooks plus both bundled skills;
+2. the standalone Skills Pack for a manual workflow; or
+3. project-local hooks from `beforedone setup codex` for the automatic gate
+   without installing the Plugin.
+
+Do not combine these routes in one Codex environment. The Plugin plus
+standalone Skills duplicates the workflows; the Plugin plus project-local
+hooks runs the lifecycle integration twice.
+
+For Pi, use `beforedone setup pi`. Do not load another copy of the generated
+extension in the same Pi runtime.
+
+For DeepSeek Harness, install `dsh-beforedone` into the selected profile. Do
+not combine it with another BeforeDone lifecycle adapter for the same session.
 
 ## 3. Choose an agent integration
 
@@ -375,7 +384,7 @@ hook: the first unsupported final message may already be visible before
 BeforeDone sends the corrective user message. The one-retry guard then allows
 the next settled result without creating an infinite loop.
 
-## Incidents and replay
+## Advanced: incidents and replay
 
 Create a self-contained HTML report, machine-readable JSON, and Replay Case
 from the current repository evidence:
@@ -434,7 +443,7 @@ create an unbounded in-memory result.
 ## Commands and exit codes
 
 ```text
-beforedone init
+beforedone init [--files <pattern>]... [-- <command> [args...]]
 beforedone doctor
 beforedone setup codex [--remove]
 beforedone setup pi [--remove]
@@ -558,6 +567,23 @@ For a complete removal:
    repository after reviewing what will be deleted;
 4. if applicable, run `codex plugin marketplace remove beforedone` to remove the
    Git marketplace source.
+
+## Evidence and technical report
+
+The empirical technical report freezes the protocol, 144 eligible confirmatory
+outcomes, analysis, and reproducibility artifact. One superseded attempt that
+produced no outcome is retained for audit and excluded from all effectiveness
+denominators. Every condition observed 0/60
+unsupported completions in the claim-supportable subset, so the report makes
+no superiority claim; it documents the mechanism, auditability, and measured
+verifier cost.
+
+[The separate `beforedone-paper` repository](https://github.com/rrrrrredy/beforedone-paper)
+contains the full protocol, run records, analysis code, and report sources. This
+keeps the product checkout focused on the CLI and preserves the study against
+the exact implementation it evaluated.
+
+[Read the report and artifact](https://doi.org/10.5281/zenodo.21766277)
 
 ## Contributing and license
 

@@ -1,6 +1,6 @@
 ---
 name: verify-before-done
-description: Require fresh, repository-state-bound BeforeDone evidence before reporting a coding task complete. Use when Codex needs to verify an implementation, run configured completion checks, inspect an evidence receipt, distinguish PASS from FAIL or INCONCLUSIVE, or confirm that earlier test evidence is still valid after files changed.
+description: Run configured BeforeDone checks and confirm that their results still match the current files. Use when the user requests BeforeDone verification or the repository already uses BeforeDone for completion evidence.
 ---
 
 # Verify Before Done
@@ -18,31 +18,28 @@ Use the BeforeDone CLI as the only authority for a valid Completion Receipt. Raw
 
 ## Workflow
 
-1. Confirm the repository and CLI.
-   - Run `git rev-parse --show-toplevel` and use that worktree as the verification root.
-   - Run `beforedone doctor`.
-   - If the command or repository is unavailable, stop and report the exact failure.
+1. Read the repository's verification configuration.
+   - Work from the intended Git worktree and read `.beforedone.yaml`.
+   - Reuse its check IDs, argv, and relevant-file scope. All required checks need current evidence at completion.
+   - If configuration is absent and setup is requested, connect the project's existing verification command with `beforedone init --files '<pattern>' -- <command> [args...]`. Repeat `--files` for source, tests, fixtures, and build inputs that affect the check. On older CLIs, run `beforedone init` and edit the generated configuration.
+   - Use `beforedone doctor` during setup or when an environment problem needs diagnosis; it is not a mandatory step on every task.
 
-2. Confirm the verification contract.
-   - Read `.beforedone.yaml` and identify every required check whose relevant-file patterns cover the changed work.
-   - Do not invent a check ID or replace configured argv with a convenient command.
-   - If the file is absent and the user asked to set up BeforeDone, run `beforedone init`, then review the generated configuration before using it. Otherwise report that verification is not configured.
+2. Run the checks that need new evidence.
+   - Run `beforedone check <check-id>` for checks affected by the task, or whose evidence is missing, stale, or failed.
+   - Run the verifier through BeforeDone once; do not first run the same command directly just to run it again for a receipt.
+   - Preserve exit codes and output. After a relevant source change, rerun the affected check.
 
-3. Generate fresh evidence.
-   - Run `beforedone check <check-id>` once for each required check.
-   - Preserve the command's exit code and output. Do not pipe, rewrite, or post-process output in a way that can hide failure.
-   - After any relevant source change, rerun the affected check; an earlier PASS is stale by design.
+3. Confirm completion once.
+   - For a manual workflow, run `beforedone gate`. It evaluates every required check against the current files without rerunning the verifiers.
+   - If checking whether previous results can be reused, start with `gate` and run only checks that need fresh evidence. A fresh PASS needs no rerun.
+   - When an active lifecycle integration supplies the final gate, a separate manual gate is optional. When reporting a gate result, use its evidence verdict.
+   - Use `beforedone receipt <check-id>` only when detailed receipt inspection is needed; it is not an extra completion step.
 
-4. Inspect the receipt state.
-   - Run `beforedone receipt <check-id>` for every required check.
-   - Confirm that each required receipt is bound to the current relevant-file fingerprint and reports the expected check ID.
-   - Treat missing, malformed, or unreadable evidence as INCONCLUSIVE, never as PASS.
-
-5. Report the result.
+4. Report the result.
    - Report PASS only when all required checks have fresh PASS receipts.
    - Report FAIL when a configured check ran and failed.
    - Report INCONCLUSIVE when BeforeDone cannot prove either state, including missing configuration, missing receipts, or unusable evidence.
-   - Include the check IDs, commands run, verdicts, and receipt paths emitted by BeforeDone. State what must happen next for every non-PASS result.
+   - Include the checks run or reused, verdicts, and receipt paths already emitted by BeforeDone. Explain the next step for a non-PASS result. Gate permission to stop is not itself a PASS verdict.
 
 ## Exit codes
 

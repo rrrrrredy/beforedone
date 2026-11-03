@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BeforeDone — Make coding agents prove they're done</title>
-  <meta name="description" content="BeforeDone is an open-source evidence gate and incident replay toolkit for coding agents. Fresh evidence before completion; a replayable incident report when things go wrong.">
+  <title>BeforeDone — Know whether your checks still match your code</title>
+  <meta name="description" content="Run your existing verification commands, keep their results tied to the files they checked, and confirm the current state before completion.">
   <meta name="theme-color" content="#0b0b0c">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="BeforeDone — Make coding agents prove they're done">
-  <meta property="og:description" content="Fresh evidence before completion. A replayable incident report when things go wrong.">
+  <meta property="og:title" content="BeforeDone — Know whether your checks still match your code">
+  <meta property="og:description" content="Connect your existing checks. Reuse results while their configured files still match. Confirm the current state before completion.">
   <meta property="og:url" content="https://rrrrrredy.github.io/beforedone/">
   <meta property="og:image" content="https://rrrrrredy.github.io/beforedone/assets/og.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -34,8 +34,8 @@
   <main id="main">
     <section class="hero section-dark" id="product">
       <div class="hero-copy">
-        <h1>Make coding agents prove they're done.</h1>
-        <p>Fresh evidence before completion. A replayable incident report when things go wrong.</p>
+        <h1>Know whether your checks still match your code.</h1>
+        <p>Run your existing checks. Keep their results tied to the files they verified. Confirm the current state before completion.</p>
         <div class="hero-actions">
           <a class="button button-primary" href="#install">Install BeforeDone</a>
           <a class="button button-ghost" href="https://github.com/rrrrrredy/beforedone" rel="noreferrer">View on GitHub</a>
@@ -77,8 +77,8 @@
 
     <section class="proof-sequence section-paper" aria-labelledby="proof-heading">
       <div class="section-intro">
-        <h2 id="proof-heading">No fresh evidence.<br>No credible done.</h2>
-        <p>BeforeDone evaluates explicit verifier results against their declared relevant-file scope. Codex can block the first Stop attempt; Pi can request one corrective continuation after settlement.</p>
+        <h2 id="proof-heading">Check once.<br>Know what changed.</h2>
+        <p>Use the CLI for a manual check and completion gate, or let an agent integration run the gate automatically. Reuse a result while its configured files still match.</p>
       </div>
 
       <ol class="gate-steps">
@@ -200,8 +200,8 @@
 
     <section class="install section-paper" id="install" aria-labelledby="install-heading">
       <div class="section-intro install-intro">
-        <h2 id="install-heading">One core. Choose the agent route.</h2>
-        <p>The CLI is the source of truth and is always required. For Codex, choose exactly one of the Plugin, standalone Skills, or project-local hooks. For Pi, use the project-local extension from <code>beforedone setup pi</code>; it corrects after settlement rather than suppressing the first final message.</p>
+        <h2 id="install-heading">Start with your existing checks.</h2>
+        <p>The CLI is enough for a manual workflow. Add one agent integration when you want an automatic completion gate. BeforeDone is useful when work continues after verification; it may add little if your existing test and CI workflow already makes the current state clear.</p>
       </div>
 
       <div class="install-switcher" data-tabs>
@@ -213,7 +213,7 @@
 
         <div class="tab-panel" id="panel-cli" role="tabpanel" aria-labelledby="tab-cli" data-panel="cli">
           <h3>Install the local evidence engine</h3>
-          <p>Works on Windows, macOS, and Linux. From the target Git repository, run <code>beforedone init</code>, review <code>.beforedone.yaml</code>, then run <code>beforedone doctor</code>.</p>
+          <p>Works on Windows, macOS, and Linux. Connect your existing verifier and its file scope, then use <code>beforedone check test</code> and <code>beforedone gate</code>. See the <a href="./guide.html#quickstart">setup guide</a> for command-based initialization in the development source and the released-CLI route.</p>
           <div class="copy-row">
             <code>go install github.com/rrrrrredy/beforedone/cmd/beforedone@latest</code>
             <button type="button" data-copy="go install github.com/rrrrrredy/beforedone/cmd/beforedone@latest">Copy</button>
@@ -304,7 +304,7 @@
     </section>
 
     <section class="closing section-dark" aria-label="Project links">
-      <h2>Prove it before done.</h2>
+      <h2>Current checks. Clear handoff.</h2>
       <div class="closing-links">
         <a href="https://rrrrrredy.github.io/beforedone/"><small>Project site</small>rrrrrredy.github.io/beforedone/</a>
         <a href="https://github.com/rrrrrredy/beforedone"><small>GitHub repository</small>github.com/rrrrrredy/beforedone</a>

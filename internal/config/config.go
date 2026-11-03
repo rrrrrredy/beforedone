@@ -120,14 +120,17 @@ func Validate(root string, cfg model.Config) error {
 	return nil
 }
 
-func WriteDefault(repo *repository.Repository) (string, error) {
+func Write(repo *repository.Repository, cfg model.Config) (string, error) {
 	path := filepath.Join(repo.Root, FileName)
 	if _, err := os.Stat(path); err == nil {
 		return "", fmt.Errorf("%s already exists", FileName)
 	} else if !os.IsNotExist(err) {
 		return "", err
 	}
-	data, err := yaml.Marshal(Default(repo.Root))
+	if err := Validate(repo.Root, cfg); err != nil {
+		return "", err
+	}
+	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return "", err
 	}

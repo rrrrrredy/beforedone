@@ -85,9 +85,28 @@ func (a *App) Run(args []string) int {
 }
 
 func (a *App) init(args []string) int {
-	jsonOutput, args := consumeBool(args, "--json")
-	if len(args) != 0 {
-		return a.usageError("usage: beforedone init [--json]")
+	const usage = "usage: beforedone init [--json] [--files <pattern>]... [-- <command> [args...]]"
+	var argv, patterns []string
+	jsonOutput := false
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--":
+			argv = args[i+1:]
+			if len(argv) == 0 {
+				return a.usageError(usage)
+			}
+			i = len(args)
+		case "--json":
+			jsonOutput = true
+		case "--files":
+			if i+1 >= len(args) {
+				return a.usageError(usage)
+			}
+			i++
+			patterns = append(patterns, args[i])
+		default:
+			return a.usageError(usage)
+		}
 	}
 	repo, code := a.repo()
 	if code != ExitOK {
@@ -96,13 +115,25 @@ func (a *App) init(args []string) int {
 	path := filepath.Join(repo.Root, config.FileName)
 	created := false
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		path, err = config.WriteDefault(repo)
+		cfg := config.Default(repo.Root)
+		check := cfg.Checks["test"]
+		if len(argv) > 0 {
+			check.Argv = argv
+			check.RelevantFiles = []string{"**/*"}
+		}
+		if len(patterns) > 0 {
+			check.RelevantFiles = patterns
+		}
+		cfg.Checks["test"] = check
+		path, err = config.Write(repo, cfg)
 		if err != nil {
 			return a.usageErr(err)
 		}
 		created = true
 	} else if err != nil {
 		return a.usageErr(err)
+	} else if len(argv) > 0 || len(patterns) > 0 {
+		return a.usageError("%s already exists; edit its checks to change the command or relevant_files", config.FileName)
 	} else if _, err := config.Load(repo); err != nil {
 		return a.usageErr(err)
 	}
@@ -371,6 +402,13 @@ func (a *App) outputGate(jsonOutput bool, result stopgate.Result) int {
 		a.writeJSON(result)
 	} else {
 		fmt.Fprintf(a.Out, "Gate: %s · %s\n", result.Decision, result.Verdict)
+		for _, check := range result.Checks {
+			fmt.Fprintf(a.Out, "  %s %s", check.Verdict, check.CheckID)
+			if check.Fresh != nil {
+				fmt.Fprintf(a.Out, " · fresh=%t", *check.Fresh)
+			}
+			fmt.Fprintln(a.Out)
+		}
 		if result.Reason != "" {
 			fmt.Fprintln(a.Out, result.Reason)
 		}
@@ -667,7 +705,7 @@ func (a *App) help() {
 	fmt.Fprint(a.Out, `BeforeDone — Prove Before Done
 
 Usage:
-  beforedone init
+  beforedone init [--files <pattern>]... [-- <command> [args...]]
   beforedone doctor
   beforedone setup codex [--remove]
   beforedone setup pi [--remove]
@@ -682,6 +720,7 @@ Usage:
   beforedone licenses
 
 Add --json to public commands for schema_version 1 machine output.
+For init, put BeforeDone options before --; everything after it is verifier argv.
 `)
 }
 
