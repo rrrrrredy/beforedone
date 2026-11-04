@@ -108,9 +108,9 @@ needs observable acceptance criteria and a credible command that tests them.
 recognizes a Go module and proposes `go test ./...`; for other repositories its
 `git status --short` default is only scaffolding and is not correctness proof.
 Review existing test, build, lint, type-check, package-script, and CI commands,
-then keep the smallest set that credibly covers the task. If coverage is
-missing, add a focused regression test when that change is in scope, or report
-the uncovered criterion as unverified.
+then keep the smallest set that covers the task. Explain which acceptance
+criteria those commands check. Add a focused regression test when a concrete
+coverage gap falls within the change.
 
 ### Suggested Codex prompts
 
