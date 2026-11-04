@@ -278,7 +278,7 @@
         </details>
         <details>
           <summary>Does BeforeDone decide what to test?</summary>
-          <p>No. BeforeDone verifies project-approved commands and keeps their evidence fresh; it does not infer whether they fully cover a natural-language requirement. Ask Codex to map the task to existing tests or a focused regression test, review the generated <code>.beforedone.yaml</code>, and report any uncovered criterion as unverified.</p>
+          <p>No. BeforeDone verifies project-approved commands and keeps their evidence fresh; it does not infer whether they fully cover a natural-language requirement. Map the task to existing verification commands, review the generated <code>.beforedone.yaml</code>, and state which acceptance criteria the commands cover. Add a focused regression test when a concrete coverage gap falls within the change.</p>
         </details>
         <details>
           <summary>Why Apache-2.0 rather than MIT?</summary>
