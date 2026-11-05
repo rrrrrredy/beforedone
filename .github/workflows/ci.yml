@@ -372,6 +372,8 @@ jobs:
           New-Item -ItemType Directory -Force $runtimeRoot | Out-Null
           Push-Location $runtimeRoot
           pnpm init | Out-Null
+          # rc.6 calls registerConfig, removed by newer HMR versions in its range.
+          Set-Content pnpm-workspace.yaml "overrides:`n  '@deepseek-ai/cordis-plugin-hmr': 1.0.16"
           pnpm `
             --allow-build='@deepseek-ai/dsh-subprocess-local' `
             --allow-build='@google/genai' `
