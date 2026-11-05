@@ -168,6 +168,12 @@ async function readBeforeDoneEvents() {
 
 function profilePatch() {
   const rows = [
+    // rc.6's lazy watch-only fallback can read HMR before its service is ready.
+    // Start the existing service with the profile, without module reload roots.
+    "- id: hmr",
+    "  disabled: false",
+    "  config:",
+    "    root: []",
     "- id: session-title-llm",
     "  disabled: true",
     "- id: session-persistence-jsonl",
