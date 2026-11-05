@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 set -eu
-export BEFOREDONE_PLUGIN_VERSION=1.1.1
+export BEFOREDONE_PLUGIN_VERSION=1.2.0
 
 beforedone_path=""
 current_directory=$(pwd -P)

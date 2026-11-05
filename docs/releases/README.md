@@ -4,13 +4,12 @@ This directory contains the versioned manual release audits for BeforeDone.
 Each record states exactly what was verified and keeps native-runtime or
 third-party-review exceptions explicit.
 
-## Unreleased: simpler setup and daily verification
+## v1.2.0: explicit verification and Windows Stop hooks
 
 - New non-Go configurations require an explicit verifier. Bare `init` exits
   with configuration error code 64 and an actionable command instead of writing
   an implicit `git status --short` check. Go defaults, explicit argv, existing
-  configurations, and historical receipts are unchanged. This change is in the
-  source tree and has not been published as a release.
+  configurations, and historical receipts are unchanged.
 - Connect an existing verifier with `beforedone init --files <pattern> -- <command> [args...]`.
   Repeat `--files` to describe its inputs. The command is stored as argv and is
   not executed during setup. Existing configuration is kept; edit it to change
@@ -31,11 +30,12 @@ third-party-review exceptions explicit.
   advanced features. Gate decisions, receipt schemas, and integrations retain
   their existing behavior.
 
-These changes are available from the development source and documented on the
-matching site. Install with `go install github.com/rrrrrredy/beforedone/cmd/beforedone@main`
-until the next release. The latest published CLI is
-[v1.1.1](https://github.com/rrrrrredy/beforedone/releases/tag/v1.1.1); its release
-assets do not accept the new init options.
+Install with `go install github.com/rrrrrredy/beforedone/cmd/beforedone@v1.2.0`
+or use the platform archives in
+[v1.2.0](https://github.com/rrrrrredy/beforedone/releases/tag/v1.2.0).
+The release includes six platform archives, SPDX SBOMs, checksums, and generated
+Homebrew/Scoop manifests. The existing public-release workflow verifies downloads
+and tagged Go installs on Windows, macOS, and Linux.
 
 ## Published release records
 

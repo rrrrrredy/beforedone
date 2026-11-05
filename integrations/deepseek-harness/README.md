@@ -17,15 +17,15 @@ The Bundle fails during activation when the CLI is missing, reports an unsupport
 Install and initialize the BeforeDone CLI in the target Git repository first:
 
 ```bash
-go install github.com/rrrrrredy/beforedone/cmd/beforedone@v1.1.1
-beforedone init
+go install github.com/rrrrrredy/beforedone/cmd/beforedone@v1.2.0
+beforedone init --files 'src/**/*.py' --files 'tests/**/*' --files pyproject.toml -- python -m pytest
 beforedone doctor
 ```
 
-Before running a check with this older CLI, edit `.beforedone.yaml` to use the
-project's real verifier and its input files. Current source builds also accept
-`beforedone init --files '<pattern>' -- <command> [args...]`; bare initialization
-requires an explicit verifier outside Go modules and preserves existing config.
+Replace the Python example with the project's real verifier and its input files.
+Bare initialization requires an explicit verifier outside Go modules and
+preserves existing config. The Bundle still supports older compatible CLIs with
+an existing configuration.
 
 Then install the public Bundle into the Harness profile you use:
 
