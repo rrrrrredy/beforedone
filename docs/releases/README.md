@@ -6,10 +6,23 @@ third-party-review exceptions explicit.
 
 ## Unreleased: simpler setup and daily verification
 
+- New non-Go configurations require an explicit verifier. Bare `init` exits
+  with configuration error code 64 and an actionable command instead of writing
+  an implicit `git status --short` check. Go defaults, explicit argv, existing
+  configurations, and historical receipts are unchanged. This change is in the
+  source tree and has not been published as a release.
 - Connect an existing verifier with `beforedone init --files <pattern> -- <command> [args...]`.
   Repeat `--files` to describe its inputs. The command is stored as argv and is
   not executed during setup. Existing configuration is kept; edit it to change
   commands or file scope.
+- Project-local Codex setup now invokes the quoted Windows executable with
+  PowerShell's call operator. The previous command failed to parse before
+  BeforeDone could receive a hook event. Rerun `beforedone setup codex` with the
+  current CLI and trust the updated definitions to replace those handlers.
+  A real Windows Codex session verified the continuation on 2026-11-05: the
+  first Stop was blocked after FAIL, the Agent repaired the scoped input and
+  obtained a fresh PASS, and the second Stop completed. The loop guard and
+  verdict policy are unchanged.
 - The text gate output now lists each required check and its freshness.
   Daily guidance uses `check` followed by one completion gate, reuses current
   results, and makes detailed `receipt` inspection optional.

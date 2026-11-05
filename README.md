@@ -73,7 +73,9 @@ command uses `**/*`; narrow that scope if it includes generated output or
 installed dependencies. Paths and commands are relative to the repository root.
 
 `init` creates `.beforedone.yaml` and local runtime data under `.git/beforedone`.
-Bare `beforedone init` keeps its existing behavior and can be rerun without
+With no existing configuration, bare `beforedone init` uses `go test ./...` for
+a Go module. Other projects must supply a verifier; otherwise it exits with
+configuration error code 64 and writes no configuration. It can be rerun without
 replacing a valid configuration. If a configuration already exists, edit it to
 change the command or file scope; initialization options do not overwrite it.
 
@@ -105,8 +107,11 @@ criterion. The user does not need to diagnose the exact bug, but the task still
 needs observable acceptance criteria and a credible command that tests them.
 
 `beforedone init` is a starting point, not an automatic test designer. It
-recognizes a Go module and proposes `go test ./...`; for other repositories its
-`git status --short` default is only scaffolding and is not correctness proof.
+recognizes a Go module and proposes `go test ./...`; other repositories need an
+explicit command. It no longer supplies `git status --short` as a placeholder.
+Existing configurations and historical receipts are preserved, including any
+commands the user explicitly chose. Review older generated configurations and
+replace placeholder checks with a verifier appropriate to the project.
 Review existing test, build, lint, type-check, package-script, and CI commands,
 then keep the smallest set that covers the task. Explain which acceptance
 criteria those commands check. Add a focused regression test when a concrete
@@ -320,7 +325,10 @@ beforedone setup codex
 ```
 
 Open `/hooks`, review and trust the project hooks, then start a new task. If the
-CLI path changes during an upgrade, rerun `beforedone setup codex`. Remove only
+CLI path changes during an upgrade, rerun `beforedone setup codex`. On Windows,
+setup generates a PowerShell invocation with a quoted executable path. Rerun
+setup with the current CLI to replace older Windows handlers, then trust the
+updated definitions. Repeated setup does not duplicate handlers. Remove only
 the BeforeDone project hooks with:
 
 ```sh

@@ -21,7 +21,7 @@ Use the BeforeDone CLI as the only authority for a valid Completion Receipt. Raw
 1. Read the repository's verification configuration.
    - Work from the intended Git worktree and read `.beforedone.yaml`.
    - Reuse its check IDs, argv, and relevant-file scope. All required checks need current evidence at completion.
-   - If configuration is absent and setup is requested, connect the project's existing verification command with `beforedone init --files '<pattern>' -- <command> [args...]`. Repeat `--files` for source, tests, fixtures, and build inputs that affect the check. On older CLIs, run `beforedone init` and edit the generated configuration.
+   - If configuration is absent and setup is requested, connect the project's existing verification command with `beforedone init --files '<pattern>' -- <command> [args...]`. Repeat `--files` for source, tests, fixtures, and build inputs that affect the check. Bare `init` defaults to `go test ./...` in Go modules; other projects must supply a verifier. On older CLIs, run `beforedone init` and replace any generated placeholder command before running a check.
    - Use `beforedone doctor` during setup or when an environment problem needs diagnosis; it is not a mandatory step on every task.
 
 2. Run the checks that need new evidence.

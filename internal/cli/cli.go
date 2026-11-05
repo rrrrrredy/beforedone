@@ -124,6 +124,9 @@ func (a *App) init(args []string) int {
 		if len(patterns) > 0 {
 			check.RelevantFiles = patterns
 		}
+		if len(check.Argv) == 0 {
+			return a.usageError("no default verifier for this project; configure one with `beforedone init --files \"<pattern>\" -- <command> [args...]`")
+		}
 		cfg.Checks["test"] = check
 		path, err = config.Write(repo, cfg)
 		if err != nil {
@@ -721,6 +724,8 @@ Usage:
 
 Add --json to public commands for schema_version 1 machine output.
 For init, put BeforeDone options before --; everything after it is verifier argv.
+New Go projects default to go test ./...; other projects must supply a verifier.
+Example: beforedone init --files "src/**/*.py" --files "tests/**/*" -- python -m pytest
 `)
 }
 

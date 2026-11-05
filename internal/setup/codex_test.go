@@ -56,7 +56,10 @@ func TestCodexWritesAbsoluteIdempotentHooksAndStopBudget(t *testing.T) {
 		if !filepath.IsAbs(strings.TrimSuffix(strings.Trim(command, "'"), " hook codex")) {
 			t.Fatalf("%s Unix command is not executable-pinned: %q", event, command)
 		}
-		windowsExecutable := strings.TrimSuffix(strings.Trim(commandWindows, `"`), " hook codex")
+		if !strings.HasPrefix(commandWindows, "& '") || !strings.HasSuffix(commandWindows, "' hook codex") {
+			t.Fatalf("%s Windows command must invoke the quoted executable: %q", event, commandWindows)
+		}
+		windowsExecutable := strings.ReplaceAll(strings.TrimSuffix(strings.TrimPrefix(commandWindows, "& '"), "' hook codex"), "''", "'")
 		if !filepath.IsAbs(windowsExecutable) {
 			t.Fatalf("%s Windows command is not executable-pinned: %q", event, commandWindows)
 		}

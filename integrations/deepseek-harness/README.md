@@ -22,6 +22,11 @@ beforedone init
 beforedone doctor
 ```
 
+Before running a check with this older CLI, edit `.beforedone.yaml` to use the
+project's real verifier and its input files. Current source builds also accept
+`beforedone init --files '<pattern>' -- <command> [args...]`; bare initialization
+requires an explicit verifier outside Go modules and preserves existing config.
+
 Then install the public Bundle into the Harness profile you use:
 
 ```bash

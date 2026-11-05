@@ -32,7 +32,7 @@ func Codex(repo *repository.Repository) (*Result, error) {
 		return nil, fmt.Errorf("resolve absolute BeforeDone executable: %w", err)
 	}
 	unixCommand := shellQuote(executable) + " hook codex"
-	windowsCommand := `"` + executable + `" hook codex`
+	windowsCommand := "& '" + strings.ReplaceAll(executable, "'", "''") + "' hook codex"
 
 	dir := filepath.Join(repo.Root, ".codex")
 	if err := os.MkdirAll(dir, 0o755); err != nil {

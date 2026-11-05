@@ -17,8 +17,10 @@ import (
 
 const FileName = ".beforedone.yaml"
 
+// Default supplies shared settings and a Go verifier when go.mod is present.
+// Other projects must supply argv before this configuration can be written.
 func Default(root string) model.Config {
-	argv := []string{"git", "status", "--short"}
+	var argv []string
 	patterns := []string{"**/*"}
 	if _, err := os.Stat(filepath.Join(root, "go.mod")); err == nil {
 		argv = []string{"go", "test", "./..."}
