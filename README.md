@@ -44,18 +44,11 @@ verify it against `checksums.txt`, and put the `beforedone` executable on
 `PATH`.
 
 To install a reproducible version with Go, replace `@latest` with a release tag,
-for example `@v1.1.1`.
+for example `@v1.2.0`.
 
 ## 2. Initialize a repository
 
-Command-based initialization is available from the development source. Until
-the next release, install it with:
-
-```sh
-go install github.com/rrrrrredy/beforedone/cmd/beforedone@main
-```
-
-Then connect an existing project command from the target Git repository. For
+With BeforeDone v1.2.0 or newer, connect an existing project command from the target Git repository. For
 a Python project, for example:
 
 ```sh
@@ -63,8 +56,8 @@ beforedone init --files "src/**/*.py" --files "tests/**/*" --files "pyproject.to
 beforedone doctor
 ```
 
-The published `v1.1.1` CLI can use `beforedone init` and edit the generated YAML
-instead. It does not accept the new initialization options.
+Older CLIs do not accept these initialization options. Upgrade to v1.2.0 or
+newer; existing configurations and historical receipts are preserved.
 
 Everything after `--` is saved as the argv of the `test` check; initialization
 does not run it. Put BeforeDone options, including `--json`, before `--`.
@@ -283,8 +276,8 @@ $skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skill
 $skill-installer install https://github.com/rrrrrredy/beforedone/tree/main/skills/investigate-agent-incident
 ```
 
-The skills become available on the next Codex turn. To pin them to v1.1.1,
-replace `/tree/main/` with `/tree/v1.1.1/` in both URLs.
+The skills become available on the next Codex turn. To pin them to v1.2.0,
+replace `/tree/main/` with `/tree/v1.2.0/` in both URLs.
 
 You can also install both through the third-party `skills.sh` CLI. BeforeDone
 itself has no telemetry, but `skills.sh` is a separate tool and may collect its

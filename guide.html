@@ -72,7 +72,7 @@
           <span class="guide-number">00</span>
           <h2>Connect an existing check</h2>
           <p>Install the CLI, then connect the command you already use. This Python example saves a single check covering source, tests, and project configuration.</p>
-          <p>Command-based initialization is available from the development source. Until the next release, install it with <code>go install github.com/rrrrrredy/beforedone/cmd/beforedone@main</code>. The published <code>v1.1.1</code> CLI can use <code>beforedone init</code> and edit <code>.beforedone.yaml</code> instead; it does not accept the new initialization options.</p>
+          <p>Command-based initialization is available in v1.2.0 and newer. Install it with <code>go install github.com/rrrrrredy/beforedone/cmd/beforedone@v1.2.0</code> or download a platform archive from <a href="https://github.com/rrrrrredy/beforedone/releases/tag/v1.2.0">GitHub Releases</a>. Upgrading preserves existing configuration and historical receipts.</p>
           <div class="guide-code-block">
             <div class="guide-code-head"><span>Development CLI · Python project</span><button type="button" data-copy="beforedone init --files &quot;src/**/*.py&quot; --files &quot;tests/**/*&quot; --files &quot;pyproject.toml&quot; -- python -m pytest&#10;beforedone doctor">Copy</button></div>
             <pre><code>beforedone init --files "src/**/*.py" --files "tests/**/*" --files "pyproject.toml" -- python -m pytest
