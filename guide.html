@@ -87,7 +87,7 @@ beforedone gate</code></pre>
           <p>The gate lists every required check and its freshness without rerunning verifiers. To reuse previous results, start with <code>gate</code> and rerun only checks needing new evidence. An active integration supplies the final gate automatically; a manual gate is optional on that route. Use <code>receipt</code> when you need details.</p>
           <p class="guide-callout"><strong>Then choose exactly one Codex route.</strong> The Git Marketplace Plugin, standalone Skills Pack, and project-local hooks are separate delivery forms; combining them duplicates workflows.</p>
           <p class="guide-callout"><strong>Using Pi?</strong> Run <code>beforedone setup pi</code>, review and trust the generated project extension, and remember that Pi correction happens after settlement rather than before the first final message.</p>
-          <p class="guide-callout"><strong>Choose evidence before asking for PASS.</strong> BeforeDone verifies project-approved commands; it does not infer whether they fully cover a natural-language requirement. A user does not need to locate the exact bug, but the task needs observable acceptance criteria and a credible verifier. Treat non-Go <code>git status --short</code> initialization as scaffolding, never correctness proof.</p>
+          <p class="guide-callout"><strong>Choose evidence before asking for PASS.</strong> BeforeDone verifies project-approved commands; it does not infer whether they fully cover a natural-language requirement. With no configuration, bare <code>init</code> uses <code>go test ./...</code> for Go modules. Other projects must supply a verifier; otherwise initialization exits with code 64 and writes no configuration. The implicit <code>git status --short</code> placeholder has been removed. Existing configurations and receipts are preserved; review older generated checks and replace placeholders with a credible verifier.</p>
           <div class="guide-code-block">
             <div class="guide-code-head"><span>Prompt · configure once</span><button type="button" data-copy data-copy-target="#prompt-configure">Copy</button></div>
             <pre><code id="prompt-configure">Connect this repository's existing verification command to BeforeDone. Reuse
@@ -166,7 +166,7 @@ Report any acceptance criterion the configured checks do not cover.</code></pre>
               <tbody>
                 <tr><td>Git Marketplace Plugin</td><td>Stop hooks plus both bundled skills</td><td>You want the full automatic Codex gate.</td></tr>
                 <tr><td>Standalone Skills Pack</td><td>Manual verification and incident workflows</td><td>You cannot or do not want to install hooks.</td></tr>
-                <tr><td>Project-local hooks</td><td><code>beforedone setup codex</code></td><td>You want enforcement scoped to one repository.</td></tr>
+                <tr><td>Project-local hooks</td><td><code>beforedone setup codex</code></td><td>You want enforcement scoped to one repository. On Windows, rerun setup with the current CLI to replace older handlers, then trust the updated definitions.</td></tr>
                 <tr><td>Pi extension</td><td><code>beforedone setup pi</code></td><td>You want bounded Pi events and one post-settlement correction.</td></tr>
               </tbody>
             </table>
